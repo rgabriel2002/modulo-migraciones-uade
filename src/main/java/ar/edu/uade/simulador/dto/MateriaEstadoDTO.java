@@ -5,6 +5,9 @@ import java.math.BigDecimal;
 public record MateriaEstadoDTO(
         String codigo,
         String nombre,
+        Short anio,
+        Short cuatrimestre,
         String estado,
-        BigDecimal notaFinal) {
+        BigDecimal nota,
+        boolean cursada) {
 }

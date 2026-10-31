@@ -34,7 +34,7 @@ public class MotorSimulacion {
 
         return new ResultadoSimulacion(
                 List.copyOf(items),
-                ResumenSimulacion.calcular(items),
+                ResumenSimulacion.calcular(items, ctx.pendientesEnPlanOrigen()),
                 optativasSinCorrespondencia(ctx));
     }
 

@@ -108,7 +108,11 @@ class MotorSimulacionTest {
         assertThat(resumen.pendientesDeFinal()).isEqualTo(1);
         assertThat(resumen.pendientesDeCursado()).isEqualTo(3);
         assertThat(resumen.materiasReconocidas()).isEqualTo(5);
-        assertThat(resumen.avanceTituloIntermedio()).isEqualTo(33.33);
+        assertThat(resumen.pendientesPlanActual()).isEqualTo(2);
+        assertThat(resumen.pendientesPlanNuevo()).isEqualTo(4);
+        assertThat(resumen.aprobadasTituloIntermedio()).isEqualTo(2);
+        assertThat(resumen.totalTituloIntermedio()).isEqualTo(6);
+        assertThat(resumen.avanceTituloIntermedio()).isEqualTo(33);
 
         assertThat(resultado.optativasSinCorrespondencia())
                 .extracting(Materia::getCodigo)

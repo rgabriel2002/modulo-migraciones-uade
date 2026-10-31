@@ -7,27 +7,40 @@ public record ResumenSimulacion(
         int pendientesDeFinal,
         int pendientesDeCursado,
         int materiasReconocidas,
-        double avanceTituloIntermedio) {
+        int pendientesPlanActual,
+        int pendientesPlanNuevo,
+        int aprobadasTituloIntermedio,
+        int totalTituloIntermedio,
+        int avanceTituloIntermedio) {
 
-    public static ResumenSimulacion calcular(List<ItemSimulado> items) {
+    public static ResumenSimulacion calcular(List<ItemSimulado> items, int pendientesPlanActual) {
         int aprobadas = contar(items, EstadoSimulado.APROBADA);
         int pendientesDeFinal = contar(items, EstadoSimulado.FINAL);
-        int pendientesDeCursado = contar(items, EstadoSimulado.CURSANDO) + contar(items, EstadoSimulado.A_CURSAR);
+        int pendientesDeCursado = contar(items, EstadoSimulado.CURSANDO)
+                + contar(items, EstadoSimulado.A_CURSAR);
         int reconocidas = (int) items.stream().filter(ItemSimulado::estaReconocida).count();
 
-        long totalTituloIntermedio = items.stream()
+        int totalTituloIntermedio = (int) items.stream()
                 .filter(item -> item.materiaDestino().isEsTituloIntermedio())
                 .count();
-        long aprobadasTituloIntermedio = items.stream()
+        int aprobadasTituloIntermedio = (int) items.stream()
                 .filter(item -> item.materiaDestino().isEsTituloIntermedio())
                 .filter(item -> item.estado() == EstadoSimulado.APROBADA)
                 .count();
-        double avance = totalTituloIntermedio == 0
-                ? 0.0
-                : Math.round(10000.0 * aprobadasTituloIntermedio / totalTituloIntermedio) / 100.0;
+        int avance = totalTituloIntermedio == 0
+                ? 0
+                : (int) Math.round(100.0 * aprobadasTituloIntermedio / totalTituloIntermedio);
 
         return new ResumenSimulacion(
-                aprobadas, pendientesDeFinal, pendientesDeCursado, reconocidas, avance);
+                aprobadas,
+                pendientesDeFinal,
+                pendientesDeCursado,
+                reconocidas,
+                pendientesPlanActual,
+                items.size() - aprobadas,
+                aprobadasTituloIntermedio,
+                totalTituloIntermedio,
+                avance);
     }
 
     private static int contar(List<ItemSimulado> items, EstadoSimulado estado) {

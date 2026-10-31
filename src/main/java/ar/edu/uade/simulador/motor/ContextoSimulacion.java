@@ -32,10 +32,26 @@ public class ContextoSimulacion {
         this.historial = List.copyOf(historial);
     }
 
+    public PlanEstudio planOrigen() {
+        return planOrigen;
+    }
+
+    public PlanEstudio planDestino() {
+        return planDestino;
+    }
+
     public List<PlanMateria> materiasDestino() {
         return planDestino.getMaterias().stream()
                 .sorted(PlanMateria.porUbicacion())
                 .toList();
+    }
+
+    public int pendientesEnPlanOrigen() {
+        return (int) planOrigen.getMaterias().stream()
+                .filter(pm -> estadoDe(pm.getMateria())
+                        .filter(estado -> estado == EstadoMateria.APROBADA)
+                        .isEmpty())
+                .count();
     }
 
     public Optional<EstadoMateria> estadoDe(Materia materia) {

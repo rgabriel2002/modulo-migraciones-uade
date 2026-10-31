@@ -4,6 +4,6 @@ import java.util.List;
 
 public record SituacionAcademicaResponse(
         String legajo,
-        String codigoPlan,
+        PlanRefDTO plan,
         List<MateriaEstadoDTO> materias) {
 }

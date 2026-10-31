@@ -23,6 +23,7 @@ public class ReglaEquivalenciaPorResolucion extends ReglaEquivalenciaBase {
                 .toList();
         return new Reconocimiento(
                 estadoHeredado(estados),
+                TipoReconocimiento.EQUIVALENCIA,
                 equivalencia.getResolucion(),
                 equivalencia.getMateriasOrigen());
     }

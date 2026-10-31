@@ -3,7 +3,9 @@ package ar.edu.uade.simulador.dto;
 import java.util.List;
 
 public record SimulacionResponse(
+        PlanRefDTO planOrigen,
+        PlanRefDTO planDestino,
         List<ItemSimuladoDTO> items,
         ResumenDTO resumen,
-        List<String> optativasSinCorrespondencia) {
+        List<MateriaRefDTO> optativasSinCorrespondencia) {
 }

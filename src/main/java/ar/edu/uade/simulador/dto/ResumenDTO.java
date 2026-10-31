@@ -5,5 +5,7 @@ public record ResumenDTO(
         int pendientesDeFinal,
         int pendientesDeCursado,
         int materiasReconocidas,
-        double avanceTituloIntermedio) {
+        int pendientesPlanActual,
+        int pendientesPlanNuevo,
+        TituloIntermedioDTO tituloIntermedio) {
 }
