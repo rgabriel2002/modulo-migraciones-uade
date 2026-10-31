@@ -27,6 +27,7 @@ public class ReglaMismaMateria extends ReglaEquivalenciaBase {
     protected Reconocimiento construir(PlanMateria destino, ContextoSimulacion ctx) {
         Materia materia = destino.getMateria();
         EstadoSimulado estado = EstadoSimulado.desde(ctx.estadoDe(materia).orElseThrow());
-        return new Reconocimiento(estado, "Misma materia", List.of(materia));
+        return new Reconocimiento(
+                estado, TipoReconocimiento.MISMA_MATERIA, "Misma materia", List.of(materia));
     }
 }

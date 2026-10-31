@@ -14,6 +14,7 @@ public interface EstudiantePlanRepository extends JpaRepository<EstudiantePlan, 
     @Query("""
             select ep from EstudiantePlan ep
             join fetch ep.plan p
+            join fetch p.carrera
             left join fetch p.materias pm
             left join fetch pm.materia
             where ep.estudiante = :estudiante and ep.estado = :estado

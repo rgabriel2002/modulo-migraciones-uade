@@ -1,16 +1,13 @@
 package ar.edu.uade.simulador.dto;
 
-import java.util.List;
-
 public record ItemSimuladoDTO(
         String codigo,
         String nombre,
-        Short anioPlan,
+        Short anio,
         Short cuatrimestre,
         Integer cargaHoraria,
-        boolean esOptativa,
-        boolean esTituloIntermedio,
+        boolean optativa,
+        boolean tituloIntermedio,
         String estado,
-        String respaldo,
-        List<String> materiasOrigen) {
+        ReconocimientoDTO reconocimiento) {
 }

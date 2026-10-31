@@ -23,4 +23,14 @@ public interface EquivalenciaRepository extends JpaRepository<Equivalencia, Inte
             @Param("origen") PlanEstudio origen,
             @Param("destino") PlanEstudio destino,
             @Param("fecha") LocalDate fecha);
+
+    @Query("""
+            select distinct e from Equivalencia e
+            join fetch e.materias em
+            join fetch em.materia
+            join fetch e.planOrigen
+            join fetch e.planDestino
+            order by e.vigenteDesde desc, e.idEquivalencia
+            """)
+    List<Equivalencia> buscarTodas();
 }

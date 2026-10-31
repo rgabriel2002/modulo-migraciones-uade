@@ -44,7 +44,7 @@ public class SimulacionService {
         ContextoSimulacion contexto = new ContextoSimulacion(
                 estudiante, origen, destino, equivalencias, historial);
 
-        return mapper.toResponse(motor.simular(contexto));
+        return mapper.toResponse(motor.simular(contexto), origen, destino);
     }
 
     private void validarMigracion(PlanEstudio origen, PlanEstudio destino) {
