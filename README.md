@@ -35,6 +35,7 @@ Backend REST para simular la migración de un estudiante desde su plan de estudi
 - Flyway
 - Spring Security
 - Spring Boot Actuator
+- springdoc-openapi 3.2.0 (Swagger UI)
 - Lombok
 - Maven Wrapper
 - Testcontainers
@@ -478,6 +479,20 @@ X-Legajo: 1100001
 ```
 
 > `X-Legajo` es una identificación temporal para desarrollo. No es autenticación real.
+
+### Documentación interactiva (Swagger UI)
+
+Con el backend levantado en `localhost:8080`:
+
+- UI: http://localhost:8080/swagger-ui.html
+- OpenAPI JSON: http://localhost:8080/v3/api-docs
+- OpenAPI YAML: http://localhost:8080/v3/api-docs.yaml
+
+En la UI desplegá cada endpoint y usá **Try it out**. Para los que requieren identidad,
+completá el header `X-Legajo` (por ejemplo `1100001`).
+
+> Solo para desarrollo local. En producción conviene apagarlo con
+> `springdoc.api-docs.enabled=false` y `springdoc.swagger-ui.enabled=false`.
 
 ### Resumen de endpoints
 
@@ -954,9 +969,10 @@ Códigos:
 
 | Código | Cuándo |
 |---|---|
-| `400` | Falta `X-Legajo` o el body no pasa validación |
+| `400` | Falta `X-Legajo`, JSON malformado, body inválido o tipo de parámetro inválido |
 | `404` | No existe el estudiante, el plan o el recurso |
 | `409` | Migración no permitida: mismo plan o plan destino inactivo |
+| `415` | `Content-Type` no soportado |
 | `500` | Error inesperado |
 
 Ejemplos:
@@ -1122,13 +1138,11 @@ Los tests de API usan Testcontainers y necesitan Docker corriendo. Los tests del
 ## Limitaciones conocidas
 
 - **Sin autenticación real:** `SecurityConfig` permite todas las requests y la identidad se toma de `X-Legajo`, que es falsificable. No exponer a Internet sin implementar JWT/OAuth2.
+- **Swagger expuesto sin autenticación:** `/swagger-ui.html` y `/v3/api-docs` están abiertos. Apagarlos fuera de desarrollo.
 - **Correlatividades no usadas por el motor:** se muestran en el detalle del plan, pero no bloquean ni ordenan la simulación.
 - **Datos demo en migraciones principales:** `V2__datos_demo.sql` se ejecuta en cualquier entorno. Conviene separarlo por perfil.
 - **Asignación greedy:** el motor recorre las materias destino en orden y asigna la primera mejor candidata; no hace una optimización global.
 - **Sin paginación:** los listados devuelven todos los registros.
-- **Sin OpenAPI/Swagger:** la documentación de endpoints vive en este README.
-- **JSON malformado:** puede devolver `500` en lugar de `400` porque el handler global captura `Exception`.
-- **Sin CORS configurado:** un frontend en otro origen puede ser bloqueado.
 - **Un solo plan activo por estudiante:** la aplicación lo asume, pero la base no lo restringe.
 - **Sin CI:** no hay pipeline de tests/build.
 

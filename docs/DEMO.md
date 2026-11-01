@@ -40,6 +40,9 @@ docker compose logs -f backend
 # Health check
 curl -s http://localhost:8080/actuator/health
 
+# Swagger UI
+# Abrir http://localhost:8080/swagger-ui.html
+
 # Ejecutar preflight
 ./scripts/preflight.sh
 ```
@@ -49,7 +52,8 @@ curl -s http://localhost:8080/actuator/health
 1. **`docker compose ps`** — mostrar db healthy y backend up.
 2. **`docker compose logs --tail=50 backend`** — mostrar Flyway V1/V2 y "Started SimuladorApplication".
 3. **Health** — `curl http://localhost:8080/actuator/health` → `UP`.
-4. **Planes** — `curl -H "X-Legajo: 1100001" http://localhost:8080/api/v1/planes` → `1621`.
+4. **Swagger** — abrir `http://localhost:8080/swagger-ui.html` y mostrar los endpoints agrupados.
+5. **Planes** — `curl -H "X-Legajo: 1100001" http://localhost:8080/api/v1/planes` → `1621`.
 5. **Detalle plan** — `curl http://localhost:8080/api/v1/planes/1621` → 7 materias + correlatividades.
 6. **Situación** — `curl -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/situacion` → plan `1121`, 7 materias.
 7. **Historial** — `curl -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/historial` → recursadas de `9.9.002`.

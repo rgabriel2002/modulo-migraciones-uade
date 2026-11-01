@@ -113,10 +113,9 @@ Objetivo:
        - simulador-db: Up (healthy)
        - simulador-backend: Up
 
-     Nota: si el backend todavía no tiene healthcheck, va a figurar "Up"
-     desde el primer segundo aunque Spring no esté listo. Esperar igual.
-
-1.5. Seguir los logs hasta que arranque:
+     Nota: el backend tiene healthcheck en /actuator/health. El contenedor
+     puede figurar "Up" antes de que Spring termine de arrancar, así que
+     esperar igual.gs hasta que arranque:
 
      docker compose logs -f backend
 
@@ -133,6 +132,24 @@ Objetivo:
 
      Esperado:
        {"groups":["liveness","readiness"],"status":"UP"}
+
+1.7. Verificar que Flyway aplicó las dos migraciones:
+
+1.6b. Verificar Swagger:
+
+      Abrir en el navegador:
+
+        http://localhost:8080/swagger-ui.html
+
+      Esperado: la página de Swagger UI con los endpoints agrupados por
+      controller (plan-controller, estudiante-controller, simulacion-controller,
+      equivalencia-controller).
+
+      Alternativa, verificar el JSON:
+
+        curl -s http://localhost:8080/v3/api-docs | head -c 200
+
+      Esperado: JSON que empieza con {"openapi":...
 
 1.7. Verificar que Flyway aplicó las dos migraciones:
 
