@@ -1,0 +1,81 @@
+@baseUrl = http://localhost:8080
+@legajo = 1100001
+
+### Health check
+GET {{baseUrl}}/actuator/health
+
+### Listar planes destino
+GET {{baseUrl}}/api/v1/planes
+X-Legajo: {{legajo}}
+
+### Detalle de un plan
+GET {{baseUrl}}/api/v1/planes/1621
+
+### Situación académica del estudiante
+GET {{baseUrl}}/api/v1/estudiantes/situacion
+X-Legajo: {{legajo}}
+
+### Historial académico
+GET {{baseUrl}}/api/v1/estudiantes/historial
+X-Legajo: {{legajo}}
+
+### Simular migración
+POST {{baseUrl}}/api/v1/simulaciones
+Content-Type: application/json
+X-Legajo: {{legajo}}
+
+{
+  "codigoPlanDestino": "1621"
+}
+
+### Listar equivalencias
+GET {{baseUrl}}/api/v1/equivalencias
+
+### Equivalencias filtradas
+GET {{baseUrl}}/api/v1/equivalencias?planOrigen=1121&planDestino=1621
+
+### Caso de error: falta X-Legajo (400)
+GET {{baseUrl}}/api/v1/estudiantes/situacion
+
+### Caso de error: legajo inexistente (404)
+GET {{baseUrl}}/api/v1/planes
+X-Legajo: 9999999
+
+### Caso de error: plan inexistente (404)
+GET {{baseUrl}}/api/v1/planes/9999
+
+### Caso de error: mismo plan destino (409)
+POST {{baseUrl}}/api/v1/simulaciones
+Content-Type: application/json
+X-Legajo: {{legajo}}
+
+{
+  "codigoPlanDestino": "1121"
+}
+
+### Caso de error: body inválido (400)
+POST {{baseUrl}}/api/v1/simulaciones
+Content-Type: application/json
+X-Legajo: {{legajo}}
+
+{
+  "codigoPlanDestino": ""
+}
+
+### Caso de error: JSON malformado (400)
+POST {{baseUrl}}/api/v1/simulaciones
+Content-Type: application/json
+X-Legajo: {{legajo}}
+
+{
+  "codigoPlanDestino": "1621"
+
+### Caso de error: Content-Type incorrecto (415)
+POST {{baseUrl}}/api/v1/simulaciones
+Content-Type: text/plain
+X-Legajo: {{legajo}}
+
+hola
+
+### Caso de error: ruta inexistente (404)
+GET {{baseUrl}}/api/v1/ruta/inexistente

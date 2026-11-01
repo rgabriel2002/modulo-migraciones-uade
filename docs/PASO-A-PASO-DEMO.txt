@@ -1,0 +1,422 @@
+===============================================================================
+ SIMULADOR DE MIGRACIÓN - PASO A PASO PARA LA DEMO LOCAL
+===============================================================================
+
+Objetivo:
+  Presentar el backend funcionando en local, sin depender de Internet,
+  sin seguridad remota y con datos demo reproducibles.
+
+Alcance:
+  - Todo Docker (backend + PostgreSQL).
+  - Sin JWT, sin túnel, sin CORS, sin TLS.
+  - Datos demo cargados por Flyway (V1 + V2).
+
+Directorio de trabajo:
+  /home/gabriel/Escritorio/simulador./simulador
+
+Datos demo:
+  Legajo:        1100001
+  Plan actual:   1121 - Tecnicatura Universitaria en Desarrollo de Software
+  Plan destino:  1621 - Ingeniería en Informática
+  Equivalencia:  Res. 123/21 (3.4.225 -> 3.4.069)
+
+Puertos:
+  Backend:  8080
+  Postgres: 5433 (host) -> 5432 (contenedor)
+
+===============================================================================
+ FASE 0 - PREFLIGHT (5 minutos, hacerlo el día anterior y el día de la demo)
+===============================================================================
+
+0.1. Abrir una terminal en el proyecto.
+
+0.2. Verificar que Docker esté corriendo:
+
+     docker info
+
+     Esperado: información del daemon, sin errores.
+
+0.3. Verificar que exista el archivo .env:
+
+     ls -la .env
+
+     Esperado: el archivo existe.
+     Si no existe:
+
+     cp .env.example .env
+
+     Y revisar que DB_NAME, DB_USER, DB_PASSWORD y DB_HOST_PORT sean correctos.
+
+0.4. Verificar que los puertos estén libres:
+
+     ss -ltnp | grep -E ':8080|:5433'
+
+     Esperado: sin salida (puertos libres).
+     Si hay algo ocupado:
+       - Identificar el proceso.
+       - O bien detenerlo.
+       - O bien cambiar APP_PORT y DB_HOST_PORT en .env.
+
+0.5. Verificar que no haya contenedores viejos del proyecto:
+
+     docker compose ps
+
+0.6. Validar la configuración de Compose:
+
+     docker compose config --quiet
+
+     Esperado: sin errores.
+
+0.7. (Opcional) Backup de la base actual:
+
+     docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup-$(date +%F).sql
+
+     Nota: si la demo se hace desde cero, este backup no es necesario.
+
+===============================================================================
+ FASE 1 - ENSAYO DE ARRANQUE DESDE CERO (15-20 minutos)
+===============================================================================
+
+Objetivo:
+  Comprobar que el proyecto funciona sin depender de ningún estado previo.
+
+1.1. Bajar todo y borrar el volumen de la base:
+
+     docker compose down -v
+
+     Esto elimina:
+       - Contenedores.
+       - Red.
+       - Volumen simulador_db_data (todos los datos).
+
+     Esto NO elimina:
+       - Imágenes.
+       - Archivos del repo.
+
+1.2. Reconstruir la imagen del backend:
+
+     docker compose build --pull
+
+     Tiempo esperado:
+       - Primera vez: 2-5 minutos (descarga dependencias de Maven).
+       - Veces siguientes: 30-60 segundos.
+
+1.3. Levantar todo:
+
+     docker compose up -d
+
+1.4. Ver el estado:
+
+     docker compose ps
+
+     Esperado:
+       - simulador-db: Up (healthy)
+       - simulador-backend: Up
+
+     Nota: si el backend todavía no tiene healthcheck, va a figurar "Up"
+     desde el primer segundo aunque Spring no esté listo. Esperar igual.
+
+1.5. Seguir los logs hasta que arranque:
+
+     docker compose logs -f backend
+
+     Esperado, en orden:
+       - Flyway: "Successfully applied 2 migrations"
+       - Spring: "Started SimuladorApplication in X seconds"
+
+     Tiempo esperado: ~15-25 segundos después de levantar.
+     Cortar con Ctrl+C cuando aparezca "Started SimuladorApplication".
+
+1.6. Verificar salud:
+
+     curl -s http://localhost:8080/actuator/health
+
+     Esperado:
+       {"groups":["liveness","readiness"],"status":"UP"}
+
+1.7. Verificar que Flyway aplicó las dos migraciones:
+
+     docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select version, description, success from flyway_schema_history order by installed_rank;"'
+
+     Esperado:
+       V1 | esquema inicial | t
+       V2 | datos demo      | t
+
+1.8. Verificar los datos demo:
+
+     docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select legajo, nombre, apellido from estudiante;"'
+
+     Esperado:
+       1100001 | Alumno | De Prueba
+
+1.9. Verificar los endpoints principales:
+
+     curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/planes
+     curl -s http://localhost:8080/api/v1/planes/1621
+     curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/situacion
+     curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/historial
+     curl -s -X POST http://localhost:8080/api/v1/simulaciones -H "X-Legajo: 1100001" -H "Content-Type: application/json" -d '{"codigoPlanDestino":"1621"}'
+     curl -s http://localhost:8080/api/v1/equivalencias
+
+     Verificar:
+       - Planes: devuelve 1621.
+       - Plan 1621: 7 materias.
+       - Situación: plan 1121, 7 materias.
+       - Historial: 7 materias.
+       - Simulación: 7 ítems, 3 aprobadas, 5 reconocidas.
+       - Equivalencias: 1, Res. 123/21.
+
+1.10. Anotar el tiempo total real:
+
+     Desde "docker compose down -v" hasta el primer endpoint OK.
+     Ese número define cuánto margen necesitás antes de presentar.
+
+1.11. Anotar cualquier paso manual que hayas tenido que hacer.
+
+     Si hiciste algo a mano (insertar datos, cambiar credenciales, tocar
+     el volumen), eso es una dependencia oculta: hay que llevarlo al repo
+     o al .env, o la demo no es reproducible.
+
+===============================================================================
+ FASE 2 - PREBUILD ANTES DE PRESENTAR (el día anterior)
+===============================================================================
+
+Objetivo:
+  Que el día de la demo no haya que compilar ni descargar nada.
+
+2.1. Construir la imagen:
+
+     docker compose build --pull
+
+2.2. Descargar la imagen de PostgreSQL:
+
+     docker compose pull db
+
+2.3. Verificar que las imágenes estén locales:
+
+     docker images | grep -E 'simulador|postgres'
+
+2.4. NO hacer "down -v" después del prebuild si querés conservar la base.
+     Si querés demo desde cero, hacelo antes del prebuild, no después.
+
+2.5. El día de la demo, levantar sin build:
+
+     docker compose up -d
+
+     Nunca usar --build en vivo salvo que hayas cambiado código.
+
+===============================================================================
+ FASE 3 - GUION DE DEMO (5-8 minutos)
+===============================================================================
+
+Preparación previa:
+  - Terminal con fuente grande.
+  - Navegador cerrado o en pestaña del health.
+  - api.http abierto en IntelliJ (si existe).
+  - Este archivo abierto al costado.
+
+------------------------------------------------------------------------------
+ PASO 1 - Estado de los contenedores (20 segundos)
+------------------------------------------------------------------------------
+
+   docker compose ps
+
+   Decir:
+     "Tenemos PostgreSQL y el backend corriendo en Docker. La base está
+      healthy y el backend escuchando en 8080."
+
+------------------------------------------------------------------------------
+ PASO 2 - Arranque y migraciones (30 segundos)
+------------------------------------------------------------------------------
+
+   docker compose logs --tail=50 backend
+
+   Mostrar:
+     - Flyway aplicó V1 y V2.
+     - "Started SimuladorApplication".
+
+   Decir:
+     "Flyway crea el esquema y carga los datos demo automáticamente.
+      No hay que ejecutar SQL a mano."
+
+------------------------------------------------------------------------------
+ PASO 3 - Health check (10 segundos)
+------------------------------------------------------------------------------
+
+   curl -s http://localhost:8080/actuator/health
+
+   Esperado:
+     {"groups":["liveness","readiness"],"status":"UP"}
+
+------------------------------------------------------------------------------
+ PASO 4 - Planes destino (30 segundos)
+------------------------------------------------------------------------------
+
+   curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/planes
+
+   Esperado:
+     [{"codigoPlan":"1621","carrera":"Ingeniería en Informática","estado":"ACTIVO"}]
+
+   Decir:
+     "El alumno 1100001 cursa la Tecnicatura. El sistema le ofrece
+      Ingeniería en Informática como plan destino."
+
+------------------------------------------------------------------------------
+ PASO 5 - Detalle del plan destino (45 segundos)
+------------------------------------------------------------------------------
+
+   curl -s http://localhost:8080/api/v1/planes/1621
+
+   Mostrar:
+     - 7 materias.
+     - Año, cuatrimestre, carga horaria.
+     - Correlatividades de Programación II.
+
+   Decir:
+     "El plan destino trae materias y correlatividades. El motor todavía
+      no usa las correlatividades para bloquear, pero el dato está modelado."
+
+------------------------------------------------------------------------------
+ PASO 6 - Situación académica actual (45 segundos)
+------------------------------------------------------------------------------
+
+   curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/situacion
+
+   Mostrar:
+     - Plan 1121.
+     - 7 materias con estado APROBADA, FINAL, CURSANDO.
+     - Notas.
+
+------------------------------------------------------------------------------
+ PASO 7 - Historial con recursadas (30 segundos)
+------------------------------------------------------------------------------
+
+   curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/historial
+
+   Mostrar:
+     - Base de Datos I con dos cursadas: LIBRE (3) y REGULAR (6).
+
+   Decir:
+     "El historial guarda cada intento, no solo el estado final."
+
+------------------------------------------------------------------------------
+ PASO 8 - Simulación (90 segundos, el corazón de la demo)
+------------------------------------------------------------------------------
+
+   curl -s -X POST http://localhost:8080/api/v1/simulaciones \
+     -H "X-Legajo: 1100001" \
+     -H "Content-Type: application/json" \
+     -d '{"codigoPlanDestino":"1621"}'
+
+   Mostrar y explicar:
+     - 7 ítems.
+     - 3.4.069 reconocida por equivalencia Res. 123/21 desde 3.4.225.
+     - 3.4.164 reconocida como misma materia.
+     - 9.9.001 queda A_CURSAR porque 102 h no coinciden con 68 h.
+     - 9.9.002 queda FINAL.
+     - 9.9.006 queda CURSANDO.
+     - Resumen: 3 aprobadas, 1 final, 3 pendientes de cursado,
+       5 reconocidas, 2 pendientes del plan actual, 4 del plan nuevo.
+     - Título intermedio: 2 de 6, 33 %.
+     - Optativa sin correspondencia: 9.9.005.
+
+------------------------------------------------------------------------------
+ PASO 9 - Equivalencias (20 segundos)
+------------------------------------------------------------------------------
+
+   curl -s http://localhost:8080/api/v1/equivalencias
+
+   Mostrar:
+     - Res. 123/21.
+     - 3.4.225 -> 3.4.069.
+     - Vigente desde 2021-03-01.
+
+------------------------------------------------------------------------------
+ PASO 10 - Casos de error (30 segundos, opcional pero recomendado)
+------------------------------------------------------------------------------
+
+   Sin header:
+
+     curl -i http://localhost:8080/api/v1/estudiantes/situacion
+
+     Esperado: 400.
+
+   Legajo inexistente:
+
+     curl -i -H "X-Legajo: 9999999" http://localhost:8080/api/v1/planes
+
+     Esperado: 404.
+
+   Mismo plan:
+
+     curl -i -X POST http://localhost:8080/api/v1/simulaciones \
+       -H "X-Legajo: 1100001" \
+       -H "Content-Type: application/json" \
+       -d '{"codigoPlanDestino":"1121"}'
+
+     Esperado: 409.
+
+   Decir:
+     "La API distingue errores de negocio de errores de infraestructura."
+
+------------------------------------------------------------------------------
+ PASO 11 - Cierre (20 segundos)
+------------------------------------------------------------------------------
+
+   Resumir:
+     - Backend REST en Spring Boot.
+     - PostgreSQL con Flyway.
+     - Motor de reglas extensible.
+     - Datos demo reproducibles con un comando.
+
+===============================================================================
+ FASE 4 - PLAN B
+===============================================================================
+
+B.1. Si Docker no arranca:
+     - Verificar "docker info".
+     - Reiniciar Docker.
+     - Último recurso: backend local con JDK 21 y DB en Docker.
+
+B.2. Si el puerto está ocupado:
+     - Cambiar APP_PORT y DB_HOST_PORT en .env.
+     - "docker compose up -d" (no hace falta rebuild por puerto).
+     - Actualizar la URL en api.http y en el navegador.
+
+B.3. Si faltan datos:
+     - "docker compose down -v".
+     - "docker compose up -d".
+     - Esperar "Started SimuladorApplication".
+
+B.4. Si el backend no toma cambios de código:
+     - "docker compose up -d --build backend".
+
+B.5. Si algo falla en vivo:
+     - No debuggear frente a la audiencia.
+     - Pasar a capturas de pantalla o video grabado.
+     - Seguir con el guion oral.
+
+===============================================================================
+ CHECKLIST FINAL (marcar antes de presentar)
+===============================================================================
+
+[ ] Docker corriendo.
+[ ] .env presente y con credenciales correctas.
+[ ] Puertos 8080 y 5433 libres.
+[ ] Imagen del backend construida.
+[ ] Imagen de PostgreSQL descargada.
+[ ] "docker compose up -d" levanta sin errores.
+[ ] "docker compose ps" muestra db healthy y backend up.
+[ ] Logs muestran "Started SimuladorApplication".
+[ ] /actuator/health devuelve UP.
+[ ] Flyway muestra V1 y V2 aplicadas.
+[ ] Estudiante 1100001 existe.
+[ ] Los 7 endpoints responden.
+[ ] Los 3 casos de error devuelven 400/404/409.
+[ ] api.http abierto (si existe).
+[ ] Guion de demo a mano.
+[ ] Plan B definido (capturas o video).
+
+===============================================================================
+ FIN
+===============================================================================

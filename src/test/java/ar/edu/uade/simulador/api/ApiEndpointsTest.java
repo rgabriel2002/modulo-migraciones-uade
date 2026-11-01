@@ -198,4 +198,24 @@ class ApiEndpointsTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.mensaje").value("codigoPlanDestino: no debe estar vacío"));
     }
+
+    @Test
+    void devuelve400SiElJSONEstaMalFormado() throws Exception {
+        mockMvc.perform(post("/api/v1/simulaciones")
+                        .header("X-Legajo", LEGAJO)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{bad json}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void devuelve415SiElContentTypeNoEsSoportado() throws Exception {
+        mockMvc.perform(post("/api/v1/simulaciones")
+                        .header("X-Legajo", LEGAJO)
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("hola"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415));
+    }
 }

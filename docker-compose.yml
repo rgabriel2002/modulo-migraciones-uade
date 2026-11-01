@@ -36,6 +36,12 @@ services:
       TZ: America/Argentina/Buenos_Aires
     ports:
       - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
 
 volumes:
   db_data:
