@@ -115,7 +115,9 @@ Objetivo:
 
      Nota: el backend tiene healthcheck en /actuator/health. El contenedor
      puede figurar "Up" antes de que Spring termine de arrancar, así que
-     esperar igual.gs hasta que arranque:
+     esperar igual.
+
+1.5. Seguir los logs hasta que arranque:
 
      docker compose logs -f backend
 
@@ -132,8 +134,6 @@ Objetivo:
 
      Esperado:
        {"groups":["liveness","readiness"],"status":"UP"}
-
-1.7. Verificar que Flyway aplicó las dos migraciones:
 
 1.6b. Verificar Swagger:
 

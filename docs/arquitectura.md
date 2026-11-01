@@ -38,10 +38,10 @@ flowchart TD
         ER[EquivalenciaRepository]
         SR[EstudianteRepository]
         HR[HistorialAcademicoRepository]
-        ...
+        OTROS[Otros repositorios]
     end
 
-    subgraph DB[(PostgreSQL 16)]
+    subgraph DB[PostgreSQL 16]
         DB1[Tablas del esquema V1]
         DB2[Datos demo V2]
     end
