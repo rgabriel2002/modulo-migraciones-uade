@@ -1,31 +1,51 @@
 @baseUrl = http://localhost:8080
 @legajo = 1100001
+@legajoMulti = 1100002
 
 ### Health check
 GET {{baseUrl}}/actuator/health
 
-### Listar planes destino
-GET {{baseUrl}}/api/v1/planes
+### Listar planes destino (excluye el origen elegido)
+GET {{baseUrl}}/api/v1/planes?excluir=1121
 X-Legajo: {{legajo}}
+
+### Listar planes destino de un alumno multi-carrera
+GET {{baseUrl}}/api/v1/planes?excluir=1621
+X-Legajo: {{legajoMulti}}
 
 ### Detalle de un plan
 GET {{baseUrl}}/api/v1/planes/1621
 
-### Situación académica del estudiante
+### Situación académica del estudiante (planes activos)
 GET {{baseUrl}}/api/v1/estudiantes/situacion
 X-Legajo: {{legajo}}
+
+### Situación académica multi-carrera (dos planes activos)
+GET {{baseUrl}}/api/v1/estudiantes/situacion
+X-Legajo: {{legajoMulti}}
 
 ### Historial académico
 GET {{baseUrl}}/api/v1/estudiantes/historial
 X-Legajo: {{legajo}}
 
-### Simular migración
+### Simular migración (cambio de plan)
 POST {{baseUrl}}/api/v1/simulaciones
 Content-Type: application/json
 X-Legajo: {{legajo}}
 
 {
+  "codigoPlanOrigen": "1121",
   "codigoPlanDestino": "1621"
+}
+
+### Simular cambio de facultad (Ingeniería -> Económicas)
+POST {{baseUrl}}/api/v1/simulaciones
+Content-Type: application/json
+X-Legajo: {{legajoMulti}}
+
+{
+  "codigoPlanOrigen": "1621",
+  "codigoPlanDestino": "5010"
 }
 
 ### Listar equivalencias
@@ -44,12 +64,23 @@ X-Legajo: 9999999
 ### Caso de error: plan inexistente (404)
 GET {{baseUrl}}/api/v1/planes/9999
 
+### Caso de error: origen no activo para el legajo (404)
+POST {{baseUrl}}/api/v1/simulaciones
+Content-Type: application/json
+X-Legajo: {{legajo}}
+
+{
+  "codigoPlanOrigen": "1621",
+  "codigoPlanDestino": "5010"
+}
+
 ### Caso de error: mismo plan destino (409)
 POST {{baseUrl}}/api/v1/simulaciones
 Content-Type: application/json
 X-Legajo: {{legajo}}
 
 {
+  "codigoPlanOrigen": "1121",
   "codigoPlanDestino": "1121"
 }
 
@@ -59,6 +90,7 @@ Content-Type: application/json
 X-Legajo: {{legajo}}
 
 {
+  "codigoPlanOrigen": "1121",
   "codigoPlanDestino": ""
 }
 
@@ -68,6 +100,7 @@ Content-Type: application/json
 X-Legajo: {{legajo}}
 
 {
+  "codigoPlanOrigen": "1121",
   "codigoPlanDestino": "1621"
 
 ### Caso de error: Content-Type incorrecto (415)

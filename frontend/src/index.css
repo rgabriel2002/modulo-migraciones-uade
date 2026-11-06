@@ -1,0 +1,819 @@
+@import "tailwindcss";
+
+/* ===== Tema: paleta UADE WebCampus ===== */
+@theme {
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-ink: #14284b;
+  --color-muted: #5d6d85;
+  --color-line: #dde4ee;
+  --color-blue: #1565a8;
+  --color-blue-d: #0f548d;
+  --color-tint: #eaf2fb;
+  --color-warn: #b0451c;
+  --color-ok: #2e6a3e;
+
+  --font-sans: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mont: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Curvas fuertes: las easings nativas de CSS son demasiado débiles. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* ===== Base ===== */
+@layer base {
+  html {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
+  *, *::before, *::after {
+    box-sizing: inherit;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* ===== Componentes reutilizables ===== */
+@layer components {
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    padding: 0 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border: 1px solid transparent;
+    transition:
+      background-color 150ms var(--ease-out),
+      border-color 150ms var(--ease-out),
+      color 150ms var(--ease-out),
+      transform 140ms var(--ease-out);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .btn-primary {
+    background-color: var(--color-blue);
+    color: #fff;
+  }
+
+  .btn-secondary {
+    background-color: #fff;
+    color: var(--color-blue-d);
+    border-color: #b9cde3;
+  }
+
+  /* Solo en dispositivos que realmente pueden hover: en touch el hover
+     se queda pegado después del tap. */
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover:not(:disabled) {
+      background-color: var(--color-blue-d);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background-color: var(--color-tint);
+    }
+  }
+
+  .btn:disabled {
+    background-color: #e9edf3;
+    color: #8a97aa;
+    border-color: #d6dde7;
+    cursor: not-allowed;
+  }
+
+  .field {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid #cfd8e4;
+    border-radius: 8px;
+    background-color: #fff;
+    color: var(--color-ink);
+    font: inherit;
+    font-size: 0.88rem;
+  }
+
+  .field::placeholder {
+    color: #8a97aa;
+  }
+
+  .field:disabled {
+    background-color: #e9edf3;
+    color: #8a97aa;
+    cursor: not-allowed;
+  }
+
+  /* iOS hace zoom si el input tiene menos de 16px al enfocar. */
+  @media (pointer: coarse) {
+    .field {
+      font-size: 16px;
+    }
+  }
+
+  .label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--color-ink);
+  }
+
+  /* Entrada del modal: ocasional, 160-200ms, desde scale(0.96), nunca desde 0. */
+  .modal-overlay {
+    visibility: visible;
+    opacity: 1;
+    transition:
+      opacity 160ms var(--ease-out),
+      visibility 0s linear 0s;
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  .modal-overlay.is-cerrado {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 120ms var(--ease-out),
+      visibility 0s linear 140ms;
+  }
+
+  .modal-panel {
+    opacity: 1;
+    transform: scale(1);
+    transition:
+      transform 200ms var(--ease-out),
+      opacity 200ms var(--ease-out);
+
+    @starting-style {
+      transform: scale(0.96);
+    }
+  }
+
+  .modal-panel.is-cerrado {
+    opacity: 0;
+    transform: scale(0.98);
+    transition-duration: 140ms;
+  }
+
+  /* Entrada del resultado y del banner de error: cambios de estado ocasionales. */
+  .resultado-entrada {
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 200ms var(--ease-out);
+
+    @starting-style {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  .banner-entrada {
+    transition:
+      opacity 180ms var(--ease-out),
+      transform 180ms var(--ease-out);
+
+    @starting-style {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    border: 2px solid #d5e5f6;
+    border-top-color: var(--color-blue);
+    animation: girar 700ms linear infinite;
+  }
+
+  /* ===== Pestañas del resultado ===== */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--color-line);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .tab {
+    flex: none;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    background-color: transparent;
+    color: var(--color-muted);
+    font-weight: 600;
+    font-size: 0.88rem;
+    transition:
+      background-color 150ms var(--ease-out),
+      color 150ms var(--ease-out);
+  }
+
+  .tab[aria-selected="true"] {
+    background-color: var(--color-blue);
+    color: #fff;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .tab:hover:not([aria-selected="true"]) {
+      background-color: var(--color-tint);
+      color: var(--color-ink);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .tab-extra {
+      display: none;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow-x: visible;
+    }
+
+    .tab {
+      padding: 9px 8px;
+      font-size: 0.8rem;
+      line-height: 1.2;
+      text-align: center;
+    }
+  }
+
+  /* ===== Mapa de correlativas ===== */
+  .mapa {
+    background-color: #fff;
+    color: var(--color-ink);
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    padding: 26px;
+    box-shadow: 0 1px 3px rgba(20, 40, 75, 0.08);
+  }
+
+  .mapa-titulo {
+    margin: 0 0 14px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  .mapa-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 16px;
+    margin-bottom: 10px;
+    font-size: 0.75rem;
+    color: var(--color-muted);
+  }
+
+  .mapa-leyenda span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .muestra {
+    display: inline-block;
+    width: 18px;
+    height: 12px;
+    border: 1.5px solid #22314a;
+    border-radius: 4px;
+    background-color: #fff;
+  }
+
+  .mapa-hint {
+    margin: 0 0 14px;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--color-muted);
+  }
+
+  .mapa-scroll-hint {
+    display: none;
+    margin: -6px 0 10px;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--color-muted);
+  }
+
+  .mapa-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mapa-grid {
+    position: relative;
+    min-width: 560px;
+    padding-left: 18px;
+  }
+
+  .mapa-anio {
+    border-bottom: 2px solid var(--color-ink);
+    padding: 10px 0 4px;
+    margin-bottom: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mapa-fila {
+    display: grid;
+    gap: 0 26px;
+    margin-bottom: 28px;
+  }
+
+  .mapa-mat {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: 54px;
+    padding: 6px;
+    border: 1.5px solid #22314a;
+    border-radius: 12px;
+    background-color: #fff;
+    text-align: center;
+    transition: opacity 150ms var(--ease-out);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  .mapa-mat:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+  }
+
+  .mapa-mat.es-aprobada,
+  .mapa-m-mat.es-aprobada,
+  .muestra.es-aprobada {
+    background-color: #9fdc9f;
+    color: #1f5a2f;
+  }
+
+  .mapa-mat.es-final,
+  .mapa-m-mat.es-final,
+  .muestra.es-final {
+    background-color: #ffe066;
+    color: #8a2f0f;
+  }
+
+  .mapa-mat.es-cursando,
+  .mapa-m-mat.es-cursando,
+  .muestra.es-cursando {
+    background-color: #eaf2fb;
+    color: #0f548d;
+  }
+
+  .mapa-mat.es-a-cursar,
+  .mapa-m-mat.es-a-cursar,
+  .muestra.es-a-cursar {
+    background-color: #fff;
+    color: var(--color-ink);
+  }
+
+  .mapa-mat.es-optativa,
+  .mapa-m-mat.es-optativa,
+  .muestra.es-optativa {
+    border-style: dashed;
+  }
+
+  .mapa-vacio {
+    visibility: hidden;
+  }
+
+  .mapa-cod {
+    font-size: 0.62rem;
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .mapa-nombre {
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  .mapa-tag {
+    align-self: center;
+    margin-top: 2px;
+    padding: 0 6px;
+    border: 1px dashed currentColor;
+    border-radius: 999px;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .mapa-flechas {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .mapa-flechas path {
+    transition: opacity 150ms var(--ease-out);
+  }
+
+  .mapa-grid.is-foco .mapa-mat {
+    opacity: 0.45;
+  }
+
+  .mapa-grid.is-foco .mapa-mat.is-on {
+    opacity: 1;
+  }
+
+  .mapa-grid.is-foco .mapa-flechas path {
+    opacity: 0.12;
+  }
+
+  .mapa-grid.is-foco .mapa-flechas path.is-on {
+    opacity: 1;
+    stroke-width: 2.6;
+  }
+
+  .mapa-sin-materias {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--color-muted);
+  }
+
+  .mapa-pie {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 18px;
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 640px) {
+    .mapa {
+      padding: 16px 14px;
+    }
+  }
+
+  @media (pointer: coarse) {
+    .mapa-scroll-hint {
+      display: block;
+    }
+  }
+
+  /* ===== Lista vertical del mapa (≤640px) =====
+     En el celular la grilla con scroll horizontal no se adapta: se muestra
+     una lista de materias a ancho completo, con las correlativas como
+     etiquetas y sin flechas. */
+  .mapa-mobile {
+    display: none;
+  }
+
+  .mapa-m-anio {
+    border-bottom: 2px solid var(--color-ink);
+    padding: 10px 0 4px;
+    margin: 6px 0 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mapa-m-cuat {
+    margin: 0 0 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .mapa-m-lista {
+    list-style: none;
+    margin: 0 0 18px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mapa-m-mat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1.5px solid #22314a;
+    border-radius: 12px;
+    background-color: #fff;
+    text-align: left;
+  }
+
+  .mapa-m-cab {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .mapa-m-nombre {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  .mapa-m-estado {
+    flex: none;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+
+  .mapa-m-corr {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0 0 0 10px;
+    border-left: 2px solid var(--color-blue);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mapa-m-chip {
+    font-size: 0.72rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 640px) {
+    .mapa-desktop,
+    .mapa-hint,
+    .mapa-scroll-hint {
+      display: none;
+    }
+
+    .mapa-mobile {
+      display: block;
+    }
+  }
+
+  /* ===== Tabla del informe: tarjetas apiladas en mobile ===== */
+  .tabla-mobile {
+    display: none;
+  }
+
+  .tabla-m-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tabla-m-item {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tabla-m-cab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .tabla-m-cod {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tabla-m-nombre {
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .tabla-m-meta {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tabla-m-rec {
+    margin-top: 2px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background-color: var(--color-tint);
+    font-size: 0.78rem;
+  }
+
+  .tabla-m-rec-tipo {
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .tabla-m-rec-detalle {
+    margin-top: 2px;
+    color: var(--color-blue-d);
+    overflow-wrap: anywhere;
+  }
+
+  .tabla-m-sin {
+    margin-top: 2px;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--color-muted);
+  }
+
+  @media (max-width: 640px) {
+    .tabla-desktop {
+      display: none;
+    }
+
+    .tabla-mobile {
+      display: block;
+    }
+  }
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Movimiento reducido: se conservan los fades, se quita el desplazamiento. */
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+
+  .modal-panel {
+    transform: none;
+    transition: opacity 100ms var(--ease-out);
+
+    @starting-style {
+      transform: none;
+    }
+  }
+
+  .modal-panel.is-cerrado {
+    transform: none;
+    opacity: 0;
+    transition-duration: 100ms;
+  }
+
+  .modal-overlay.is-cerrado {
+    transition:
+      opacity 100ms var(--ease-out),
+      visibility 0s linear 100ms;
+  }
+
+  .resultado-entrada {
+    transition: opacity 150ms var(--ease-out);
+
+    @starting-style {
+      transform: none;
+    }
+  }
+
+  .banner-entrada {
+    transition: opacity 150ms var(--ease-out);
+
+    @starting-style {
+      transform: none;
+    }
+  }
+
+  .spinner {
+    animation-duration: 2s;
+  }
+
+  .mapa-mat,
+  .mapa-flechas path {
+    transition: none;
+  }
+}
+
+/* Impresión: el mapa va a ancho completo y sin los controles de pantalla. */
+@media print {
+  .tabs,
+  .mapa-hint,
+  .mapa-scroll-hint {
+    display: none !important;
+  }
+
+  .mapa-desktop,
+  .tabla-desktop {
+    display: block;
+  }
+
+  .mapa-mobile,
+  .tabla-mobile {
+    display: none !important;
+  }
+
+  .mapa {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    max-width: none;
+  }
+
+  .mapa-scroll {
+    overflow: visible;
+  }
+
+  .mapa-mat {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

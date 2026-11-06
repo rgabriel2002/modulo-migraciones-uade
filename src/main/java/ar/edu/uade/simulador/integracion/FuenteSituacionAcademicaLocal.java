@@ -30,13 +30,19 @@ public class FuenteSituacionAcademicaLocal implements FuenteSituacionAcademica {
     }
 
     @Override
-    public PlanEstudio obtenerPlanActual(String legajo) {
+    public List<EstudiantePlan> obtenerPlanesActivos(String legajo) {
+        Estudiante estudiante = obtenerEstudiante(legajo);
+        return estudiantePlanRepository.buscarPorEstudianteYEstado(estudiante, EstadoInscripcion.ACTIVO);
+    }
+
+    @Override
+    public PlanEstudio obtenerPlanActivo(String legajo, String codigoPlan) {
         Estudiante estudiante = obtenerEstudiante(legajo);
         return estudiantePlanRepository
-                .buscarPorEstudianteYEstado(estudiante, EstadoInscripcion.ACTIVO)
+                .buscarPorEstudianteEstadoYPlan(estudiante, EstadoInscripcion.ACTIVO, codigoPlan)
                 .map(EstudiantePlan::getPlan)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "El estudiante con legajo " + legajo + " no tiene un plan activo"));
+                        "El plan " + codigoPlan + " no está activo para el legajo " + legajo));
     }
 
     @Override

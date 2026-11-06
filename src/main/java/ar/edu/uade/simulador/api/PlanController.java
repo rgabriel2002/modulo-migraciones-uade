@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -21,8 +22,9 @@ public class PlanController {
 
     @GetMapping
     public ResponseEntity<List<PlanResponse>> listarPlanesDestino(
-            @RequestHeader("X-Legajo") String legajo) {
-        return ResponseEntity.ok(planService.listarPlanesDestino(legajo));
+            @RequestHeader("X-Legajo") String legajo,
+            @RequestParam(value = "excluir", required = false) String excluir) {
+        return ResponseEntity.ok(planService.listarPlanesDestino(legajo, excluir));
     }
 
     @GetMapping("/{codigo}")

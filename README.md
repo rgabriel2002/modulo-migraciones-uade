@@ -35,6 +35,7 @@ Backend REST para simular la migración de un estudiante desde su plan de estudi
 - Flyway
 - Spring Security
 - Spring Boot Actuator
+- springdoc-openapi 3.2.0 (Swagger UI)
 - Lombok
 - Maven Wrapper
 - Testcontainers
@@ -340,21 +341,23 @@ La migración `V2__datos_demo.sql` carga automáticamente:
 | Dato | Valor |
 |---|---|
 | Legajo de prueba | `1100001` |
-| Plan actual | `1121` — Tecnicatura Universitaria en Desarrollo de Software |
+| Plan activo | `1121` — Tecnicatura Universitaria en Desarrollo de Software |
 | Plan destino | `1621` — Ingeniería en Informática |
-| Equivalencia | `Res. 123/21`: `3.4.225` → `3.4.069` |
+| Legajo multi-carrera | `1100002` — `1621` + `5010` (Contador Público) activos |
+| Plan nuevo (actualización) | `5015` — Contador Público resolución 2026 |
+| Equivalencias | `Res. 123/21`: `3.4.225` → `3.4.069` · `Res. 456/22`: `3.4.164` → `1.1.144` |
 
-Datos cargados:
+Datos cargados (planes reales de UADE):
 
-- 1 facultad.
-- 2 carreras.
-- 2 planes.
-- 9 materias.
-- 14 registros de `plan_materia`.
-- 3 correlatividades.
-- 1 equivalencia.
-- 1 estudiante.
-- 7 registros de historial.
+- 2 facultades.
+- 6 carreras.
+- 7 planes (incluye `5015`, plan 2026 de Contador para demo de actualización).
+- 211 materias.
+- 279 registros de `plan_materia`.
+- 186 correlatividades.
+- 2 equivalencias.
+- 2 estudiantes.
+- 15 registros de historial.
 - 3 cursadas.
 
 ### Verificar las migraciones
@@ -479,14 +482,28 @@ X-Legajo: 1100001
 
 > `X-Legajo` es una identificación temporal para desarrollo. No es autenticación real.
 
+### Documentación interactiva (Swagger UI)
+
+Con el backend levantado en `localhost:8080`:
+
+- UI: http://localhost:8080/swagger-ui.html
+- OpenAPI JSON: http://localhost:8080/v3/api-docs
+- OpenAPI YAML: http://localhost:8080/v3/api-docs.yaml
+
+En la UI desplegá cada endpoint y usá **Try it out**. Para los que requieren identidad,
+completá el header `X-Legajo` (por ejemplo `1100001`).
+
+> Solo para desarrollo local. En producción conviene apagarlo con
+> `springdoc.api-docs.enabled=false` y `springdoc.swagger-ui.enabled=false`.
+
 ### Resumen de endpoints
 
 | Método | Endpoint | Header `X-Legajo` | Descripción |
 |---|---|---|---|
 | `GET` | `/actuator/health` | No | Estado del backend |
-| `GET` | `/api/v1/planes` | Sí | Lista planes destino activos para el estudiante |
+| `GET` | `/api/v1/planes?excluir={codigo}` | Sí | Planes destino activos, excluyendo el origen elegido |
 | `GET` | `/api/v1/planes/{codigo}` | No | Detalle de un plan con materias y correlatividades |
-| `GET` | `/api/v1/estudiantes/situacion` | Sí | Situación académica actual del estudiante |
+| `GET` | `/api/v1/estudiantes/situacion` | Sí | Planes activos del estudiante (multi-carrera) |
 | `GET` | `/api/v1/estudiantes/historial` | Sí | Historial académico con cursadas y recursadas |
 | `POST` | `/api/v1/simulaciones` | Sí | Simula la migración a otro plan |
 | `GET` | `/api/v1/equivalencias` | No | Lista equivalencias, con filtros opcionales |
@@ -514,13 +531,15 @@ Respuesta:
 
 ### `GET /api/v1/planes`
 
-Lista los planes de estudio activos que pueden usarse como destino, excluyendo el plan actual del estudiante.
+Lista los planes de estudio activos que pueden usarse como destino. El
+parámetro opcional `excluir` quita el plan elegido como origen (con un legajo
+multi-carrera se excluye solo ese, no los demás planes del alumno).
 
-**Header requerido:** `X-Legajo`
+**Header requerido:** `X-Legajo` (valida que el estudiante exista)
 
 ```bash
 curl -H "X-Legajo: 1100001" \
-  http://localhost:8080/api/v1/planes
+  "http://localhost:8080/api/v1/planes?excluir=1121"
 ```
 
 Respuesta:
@@ -530,6 +549,13 @@ Respuesta:
   {
     "codigoPlan": "1621",
     "carrera": "Ingeniería en Informática",
+    "facultad": "Facultad de Ingeniería y Ciencias Exactas",
+    "estado": "ACTIVO"
+  },
+  {
+    "codigoPlan": "5010",
+    "carrera": "Contador Público",
+    "facultad": "Facultad de Ciencias Económicas",
     "estado": "ACTIVO"
   }
 ]
@@ -541,12 +567,13 @@ Campos:
 |---|---|
 | `codigoPlan` | Código del plan |
 | `carrera` | Nombre de la carrera |
+| `facultad` | Facultad a la que pertenece la carrera |
 | `estado` | `ACTIVO` o `INACTIVO` |
 
 Errores:
 
 - `400` si falta `X-Legajo`.
-- `404` si el legajo no existe o no tiene plan activo.
+- `404` si el legajo no existe.
 
 ---
 
@@ -618,12 +645,14 @@ Errores:
 
 ### `GET /api/v1/estudiantes/situacion`
 
-Devuelve la situación académica del estudiante en su plan activo: estado de cada materia, nota y si tiene cursada registrada.
+Devuelve los planes activos del estudiante. Un legajo puede estar inscripto en
+más de una carrera a la vez (multi-carrera): la lista completa es la que el
+front usa para ofrecer el selector de origen.
 
 **Header requerido:** `X-Legajo`
 
 ```bash
-curl -H "X-Legajo: 1100001" \
+curl -H "X-Legajo: 1100002" \
   http://localhost:8080/api/v1/estudiantes/situacion
 ```
 
@@ -631,49 +660,26 @@ Respuesta:
 
 ```json
 {
-  "legajo": "1100001",
-  "plan": {
-    "codigo": "1121",
-    "carrera": "Tecnicatura Universitaria en Desarrollo de Software"
-  },
-  "materias": [
+  "legajo": "1100002",
+  "planesActivos": [
     {
-      "codigo": "3.4.164",
-      "nombre": "Sistemas de Información I",
-      "anio": 1,
-      "cuatrimestre": 1,
-      "estado": "APROBADA",
-      "nota": 7.00,
-      "cursada": true
+      "codigo": "1621",
+      "carrera": "Ingeniería en Informática",
+      "facultad": "Facultad de Ingeniería y Ciencias Exactas"
     },
     {
-      "codigo": "9.9.002",
-      "nombre": "Base de Datos I",
-      "anio": 2,
-      "cuatrimestre": 1,
-      "estado": "FINAL",
-      "nota": null,
-      "cursada": true
+      "codigo": "5010",
+      "carrera": "Contador Público",
+      "facultad": "Facultad de Ciencias Económicas"
     }
   ]
 }
 ```
 
-Valores posibles de `estado`:
-
-| Estado | Significado |
-|---|---|
-| `APROBADA` | Materia aprobada |
-| `FINAL` | Cursada aprobada, pendiente de final |
-| `CURSANDO` | Actualmente cursando |
-| `SIN_CURSAR` | Sin registros académicos |
-
-`cursada` indica si existe un registro en el historial académico.
-
 Errores:
 
 - `400` si falta `X-Legajo`.
-- `404` si el legajo no existe o no tiene plan activo.
+- `404` si el legajo no existe.
 
 ---
 
@@ -737,7 +743,8 @@ Errores:
 
 ### `POST /api/v1/simulaciones`
 
-Simula la migración del estudiante desde su plan actual hacia un plan destino.
+Simula la migración del estudiante desde un plan de origen (que debe estar
+activo para ese legajo) hacia un plan destino.
 
 **Header requerido:** `X-Legajo`
 
@@ -745,6 +752,7 @@ Simula la migración del estudiante desde su plan actual hacia un plan destino.
 
 ```json
 {
+  "codigoPlanOrigen": "1121",
   "codigoPlanDestino": "1621"
 }
 ```
@@ -753,7 +761,7 @@ Simula la migración del estudiante desde su plan actual hacia un plan destino.
 curl -X POST http://localhost:8080/api/v1/simulaciones \
   -H "X-Legajo: 1100001" \
   -H "Content-Type: application/json" \
-  -d '{"codigoPlanDestino":"1621"}'
+  -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1621"}'
 ```
 
 Respuesta:
@@ -762,11 +770,13 @@ Respuesta:
 {
   "planOrigen": {
     "codigo": "1121",
-    "carrera": "Tecnicatura Universitaria en Desarrollo de Software"
+    "carrera": "Tecnicatura Universitaria en Desarrollo de Software",
+    "facultad": "Facultad de Ingeniería y Ciencias Exactas"
   },
   "planDestino": {
     "codigo": "1621",
-    "carrera": "Ingeniería en Informática"
+    "carrera": "Ingeniería en Informática",
+    "facultad": "Facultad de Ingeniería y Ciencias Exactas"
   },
   "items": [
     {
@@ -863,9 +873,9 @@ Reglas de reconocimiento:
 
 Errores:
 
-- `400` si falta `X-Legajo`, si el body es inválido o si `codigoPlanDestino` está vacío.
-- `404` si el legajo o el plan destino no existen.
-- `409` si el plan destino es el mismo que el actual o si no está activo.
+- `400` si falta `X-Legajo`, si el body es inválido o si `codigoPlanOrigen` o `codigoPlanDestino` están vacíos.
+- `404` si el legajo, el plan destino o el plan origen (no activo para ese legajo) no existen.
+- `409` si el plan destino es el mismo que el origen o si no está activo.
 
 ---
 
@@ -954,9 +964,10 @@ Códigos:
 
 | Código | Cuándo |
 |---|---|
-| `400` | Falta `X-Legajo` o el body no pasa validación |
+| `400` | Falta `X-Legajo`, JSON malformado, body inválido o tipo de parámetro inválido |
 | `404` | No existe el estudiante, el plan o el recurso |
 | `409` | Migración no permitida: mismo plan o plan destino inactivo |
+| `415` | `Content-Type` no soportado |
 | `500` | Error inesperado |
 
 Ejemplos:
@@ -972,17 +983,23 @@ curl -i -H "X-Legajo: 9999999" \
 # Plan inexistente -> 404
 curl -i http://localhost:8080/api/v1/planes/9999
 
-# Mismo plan actual -> 409
+# Origen no activo para el legajo -> 404
 curl -i -X POST http://localhost:8080/api/v1/simulaciones \
   -H "X-Legajo: 1100001" \
   -H "Content-Type: application/json" \
-  -d '{"codigoPlanDestino":"1121"}'
+  -d '{"codigoPlanOrigen":"1621","codigoPlanDestino":"5010"}'
+
+# Mismo plan que el origen -> 409
+curl -i -X POST http://localhost:8080/api/v1/simulaciones \
+  -H "X-Legajo: 1100001" \
+  -H "Content-Type: application/json" \
+  -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1121"}'
 
 # Body inválido -> 400
 curl -i -X POST http://localhost:8080/api/v1/simulaciones \
   -H "X-Legajo: 1100001" \
   -H "Content-Type: application/json" \
-  -d '{"codigoPlanDestino":""}'
+  -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":""}'
 ```
 
 ---
@@ -1122,13 +1139,11 @@ Los tests de API usan Testcontainers y necesitan Docker corriendo. Los tests del
 ## Limitaciones conocidas
 
 - **Sin autenticación real:** `SecurityConfig` permite todas las requests y la identidad se toma de `X-Legajo`, que es falsificable. No exponer a Internet sin implementar JWT/OAuth2.
+- **Swagger expuesto sin autenticación:** `/swagger-ui.html` y `/v3/api-docs` están abiertos. Apagarlos fuera de desarrollo.
 - **Correlatividades no usadas por el motor:** se muestran en el detalle del plan, pero no bloquean ni ordenan la simulación.
 - **Datos demo en migraciones principales:** `V2__datos_demo.sql` se ejecuta en cualquier entorno. Conviene separarlo por perfil.
 - **Asignación greedy:** el motor recorre las materias destino en orden y asigna la primera mejor candidata; no hace una optimización global.
 - **Sin paginación:** los listados devuelven todos los registros.
-- **Sin OpenAPI/Swagger:** la documentación de endpoints vive en este README.
-- **JSON malformado:** puede devolver `500` en lugar de `400` porque el handler global captura `Exception`.
-- **Sin CORS configurado:** un frontend en otro origen puede ser bloqueado.
 - **Un solo plan activo por estudiante:** la aplicación lo asume, pero la base no lo restringe.
 - **Sin CI:** no hay pipeline de tests/build.
 
@@ -1156,9 +1171,9 @@ Los tests de API usan Testcontainers y necesitan Docker corriendo. Los tests del
 - [ ] `docker compose up -d --build` ejecutado.
 - [ ] `docker compose ps` muestra base healthy y backend up.
 - [ ] `/actuator/health` devuelve `UP`.
-- [ ] `GET /api/v1/planes` con `X-Legajo: 1100001` devuelve `1621`.
-- [ ] `GET /api/v1/estudiantes/situacion` devuelve plan `1121`.
-- [ ] `POST /api/v1/simulaciones` devuelve 7 ítems y resumen con 3 aprobadas.
-- [ ] `GET /api/v1/equivalencias` devuelve `Res. 123/21`.
-- [ ] `./mvnw test` pasa los 17 tests.
+- [ ] `GET /api/v1/planes?excluir=1121` con `X-Legajo: 1100001` devuelve `1621`, `5010` y `5020` con facultad.
+- [ ] `GET /api/v1/estudiantes/situacion` devuelve `planesActivos` con `1121` (y `1100002` con `1621` + `5010`).
+- [ ] `POST /api/v1/simulaciones` con origen `1121` y destino `1621` devuelve 7 ítems y resumen con 3 aprobadas.
+- [ ] `GET /api/v1/equivalencias` devuelve `Res. 456/22` y `Res. 123/21`.
+- [ ] `./mvnw test` pasa los 23 tests.
 - [ ] Si corrés local, usás `DB_PORT=5433` cuando corresponde.
