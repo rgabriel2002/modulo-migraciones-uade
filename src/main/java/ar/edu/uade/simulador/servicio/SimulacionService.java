@@ -28,9 +28,9 @@ public class SimulacionService {
     private final MotorSimulacion motor;
     private final SimulacionMapper mapper;
 
-    public SimulacionResponse simular(String legajo, String codigoPlanDestino) {
+    public SimulacionResponse simular(String legajo, String codigoPlanOrigen, String codigoPlanDestino) {
         Estudiante estudiante = fuente.obtenerEstudiante(legajo);
-        PlanEstudio origen = fuente.obtenerPlanActual(legajo);
+        PlanEstudio origen = fuente.obtenerPlanActivo(legajo, codigoPlanOrigen);
         PlanEstudio destino = planRepository.buscarDetalle(codigoPlanDestino)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe el plan " + codigoPlanDestino));

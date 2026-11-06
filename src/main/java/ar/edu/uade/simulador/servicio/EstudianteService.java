@@ -2,23 +2,18 @@ package ar.edu.uade.simulador.servicio;
 
 import ar.edu.uade.simulador.dominio.DetalleCursada;
 import ar.edu.uade.simulador.dominio.Estudiante;
+import ar.edu.uade.simulador.dominio.EstudiantePlan;
 import ar.edu.uade.simulador.dominio.HistorialAcademico;
-import ar.edu.uade.simulador.dominio.Materia;
 import ar.edu.uade.simulador.dominio.PlanEstudio;
-import ar.edu.uade.simulador.dominio.PlanMateria;
 import ar.edu.uade.simulador.dto.DetalleCursadaDTO;
 import ar.edu.uade.simulador.dto.HistorialMateriaDTO;
-import ar.edu.uade.simulador.dto.MateriaEstadoDTO;
 import ar.edu.uade.simulador.dto.MateriaRefDTO;
 import ar.edu.uade.simulador.dto.PlanRefDTO;
 import ar.edu.uade.simulador.dto.SituacionAcademicaResponse;
 import ar.edu.uade.simulador.repositorio.HistorialAcademicoRepository;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,25 +23,18 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class EstudianteService {
 
-    private static final String SIN_CURSAR = "SIN_CURSAR";
-
     private final FuenteSituacionAcademica fuente;
     private final HistorialAcademicoRepository historialRepository;
 
     public SituacionAcademicaResponse obtenerSituacion(String legajo) {
         Estudiante estudiante = fuente.obtenerEstudiante(legajo);
-        PlanEstudio plan = fuente.obtenerPlanActual(legajo);
-        Map<Integer, HistorialAcademico> historialPorMateria = fuente.obtenerHistorial(legajo).stream()
-                .collect(Collectors.toMap(h -> h.getMateria().getIdMateria(), Function.identity()));
-
-        List<MateriaEstadoDTO> materias = plan.getMaterias().stream()
-                .sorted(PlanMateria.porUbicacion())
-                .map(planMateria -> toDto(
-                        planMateria, historialPorMateria.get(planMateria.getMateria().getIdMateria())))
+        List<PlanRefDTO> planesActivos = fuente.obtenerPlanesActivos(legajo).stream()
+                .map(EstudiantePlan::getPlan)
+                .sorted(Comparator.comparing(PlanEstudio::getCodigoPlan))
+                .map(this::toRef)
                 .toList();
 
-        PlanRefDTO planRef = new PlanRefDTO(plan.getCodigoPlan(), plan.getCarrera().getNombre());
-        return new SituacionAcademicaResponse(estudiante.getLegajo(), planRef, materias);
+        return new SituacionAcademicaResponse(estudiante.getLegajo(), planesActivos);
     }
 
     public List<HistorialMateriaDTO> obtenerHistorial(String legajo) {
@@ -57,17 +45,11 @@ public class EstudianteService {
                 .toList();
     }
 
-    private MateriaEstadoDTO toDto(PlanMateria planMateria, HistorialAcademico historial) {
-        Materia materia = planMateria.getMateria();
-        String estado = historial == null ? SIN_CURSAR : historial.getEstadoGlobal().name();
-        return new MateriaEstadoDTO(
-                materia.getCodigo(),
-                materia.getNombre(),
-                planMateria.getAnioPlan(),
-                planMateria.getCuatrimestre(),
-                estado,
-                historial == null ? null : historial.getNotaFinal(),
-                historial != null);
+    private PlanRefDTO toRef(PlanEstudio plan) {
+        return new PlanRefDTO(
+                plan.getCodigoPlan(),
+                plan.getCarrera().getNombre(),
+                plan.getCarrera().getFacultad().getNombre());
     }
 
     private HistorialMateriaDTO toHistorialDto(HistorialAcademico historial) {

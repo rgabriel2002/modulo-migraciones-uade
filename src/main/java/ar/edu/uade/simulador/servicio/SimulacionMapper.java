@@ -72,7 +72,10 @@ public class SimulacionMapper {
     }
 
     private PlanRefDTO toRef(PlanEstudio plan) {
-        return new PlanRefDTO(plan.getCodigoPlan(), plan.getCarrera().getNombre());
+        return new PlanRefDTO(
+                plan.getCodigoPlan(),
+                plan.getCarrera().getNombre(),
+                plan.getCarrera().getFacultad().getNombre());
     }
 
     private MateriaRefDTO toRef(Materia materia) {

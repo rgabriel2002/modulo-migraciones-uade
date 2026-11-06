@@ -103,10 +103,10 @@ sequenceDiagram
     participant MAP as SimulacionMapper
     participant DB as PostgreSQL
 
-    C->>CTL: POST /api/v1/simulaciones<br/>X-Legajo + cuerpo JSON
-    CTL->>SVC: simular(legajo, codigoPlanDestino)
+    C->>CTL: POST /api/v1/simulaciones<br/>X-Legajo + codigoPlanOrigen + codigoPlanDestino
+    CTL->>SVC: simular(legajo, codigoPlanOrigen, codigoPlanDestino)
     SVC->>FUENTE: obtenerEstudiante(legajo)
-    SVC->>FUENTE: obtenerPlanActual(legajo)
+    SVC->>FUENTE: obtenerPlanActivo(legajo, codigoPlanOrigen)
     SVC->>REPO: buscarDetalle(codigoPlanDestino)
     SVC->>FUENTE: obtenerHistorial(legajo)
     SVC->>REPO: findVigentes(origen, destino, fecha)

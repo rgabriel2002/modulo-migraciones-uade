@@ -28,13 +28,16 @@ public class PlanService {
     private final PlanEstudioRepository planRepository;
     private final CorrelatividadRepository correlatividadRepository;
 
-    public List<PlanResponse> listarPlanesDestino(String legajo) {
-        PlanEstudio actual = fuente.obtenerPlanActual(legajo);
+    public List<PlanResponse> listarPlanesDestino(String legajo, String codigoPlanExcluir) {
+        fuente.obtenerEstudiante(legajo);
+        boolean excluir = codigoPlanExcluir != null && !codigoPlanExcluir.isBlank();
         return planRepository.findByEstado(EstadoPlan.ACTIVO).stream()
-                .filter(plan -> !plan.getCodigoPlan().equals(actual.getCodigoPlan()))
+                .filter(plan -> !excluir || !plan.getCodigoPlan().equals(codigoPlanExcluir))
+                .sorted(Comparator.comparing(PlanEstudio::getCodigoPlan))
                 .map(plan -> new PlanResponse(
                         plan.getCodigoPlan(),
                         plan.getCarrera().getNombre(),
+                        plan.getCarrera().getFacultad().getNombre(),
                         plan.getEstado().name()))
                 .toList();
     }

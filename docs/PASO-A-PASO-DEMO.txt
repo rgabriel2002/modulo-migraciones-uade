@@ -9,16 +9,18 @@ Objetivo:
 Alcance:
   - Todo Docker (backend + PostgreSQL).
   - Sin JWT, sin túnel, sin CORS, sin TLS.
-  - Datos demo cargados por Flyway (V1 + V2).
+  - Datos demo cargados por Flyway (V1 + V2 + V3).
 
 Directorio de trabajo:
   /home/gabriel/Escritorio/simulador./simulador
 
 Datos demo:
-  Legajo:        1100001
-  Plan actual:   1121 - Tecnicatura Universitaria en Desarrollo de Software
-  Plan destino:  1621 - Ingeniería en Informática
-  Equivalencia:  Res. 123/21 (3.4.225 -> 3.4.069)
+  Legajo:               1100001
+  Plan actual:          1121 - Tecnicatura Universitaria en Desarrollo de Software
+  Plan destino:         1621 - Ingeniería en Informática
+  Legajo multi-carrera: 1100002 (1621 Ingeniería + 5010 Contador Público)
+  Equivalencias:        Res. 123/21 (3.4.225 -> 3.4.069)
+                        Res. 456/22 (3.4.164 -> 1.1.144, entre facultades)
 
 Puertos:
   Backend:  8080
@@ -168,20 +170,25 @@ Objetivo:
 
 1.9. Verificar los endpoints principales:
 
-     curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/planes
+     curl -s -H "X-Legajo: 1100001" "http://localhost:8080/api/v1/planes?excluir=1121"
      curl -s http://localhost:8080/api/v1/planes/1621
      curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/situacion
+     curl -s -H "X-Legajo: 1100002" http://localhost:8080/api/v1/estudiantes/situacion
      curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/historial
-     curl -s -X POST http://localhost:8080/api/v1/simulaciones -H "X-Legajo: 1100001" -H "Content-Type: application/json" -d '{"codigoPlanDestino":"1621"}'
+     curl -s -X POST http://localhost:8080/api/v1/simulaciones -H "X-Legajo: 1100001" -H "Content-Type: application/json" -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1621"}'
+     curl -s -X POST http://localhost:8080/api/v1/simulaciones -H "X-Legajo: 1100002" -H "Content-Type: application/json" -d '{"codigoPlanOrigen":"1621","codigoPlanDestino":"5010"}'
      curl -s http://localhost:8080/api/v1/equivalencias
 
      Verificar:
-       - Planes: devuelve 1621.
-       - Plan 1621: 7 materias.
-       - Situación: plan 1121, 7 materias.
-       - Historial: 7 materias.
-       - Simulación: 7 ítems, 3 aprobadas, 5 reconocidas.
-       - Equivalencias: 1, Res. 123/21.
+       - Planes: devuelve 1621, 5010, 5015, 5020, 5030 y 5040, con facultad.
+       - Plan 1621: 51 materias.
+       - Situación 1100001: planesActivos [1121].
+       - Situación 1100002: planesActivos [1621, 5010] (multi-carrera).
+       - Historial: 8 materias.
+       - Simulación 1121 -> 1621: 51 ítems, 3 aprobadas, 5 reconocidas.
+       - Simulación 1621 -> 5010: reconocimientos entre facultades (Res. 456/22).
+       - Simulación 5010 -> 5015: actualización de plan de la misma carrera.
+       - Equivalencias: 2, Res. 456/22 y Res. 123/21.
 
 1.10. Anotar el tiempo total real:
 
@@ -249,7 +256,7 @@ Preparación previa:
    docker compose logs --tail=50 backend
 
    Mostrar:
-     - Flyway aplicó V1 y V2.
+     - Flyway aplicó V1 a V4.
      - "Started SimuladorApplication".
 
    Decir:
@@ -269,14 +276,18 @@ Preparación previa:
  PASO 4 - Planes destino (30 segundos)
 ------------------------------------------------------------------------------
 
-   curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/planes
+   curl -s -H "X-Legajo: 1100001" "http://localhost:8080/api/v1/planes?excluir=1121"
 
    Esperado:
-     [{"codigoPlan":"1621","carrera":"Ingeniería en Informática","estado":"ACTIVO"}]
+     Seis planes con facultad: 1621 (Ingeniería en Informática), 5010 y
+     5015 (Contador Público), 5020 (Licenciatura en Administración de
+     Empresas), 5030 (Licenciatura en Finanzas) y 5040 (Licenciatura en
+     Biotecnología).
 
    Decir:
-     "El alumno 1100001 cursa la Tecnicatura. El sistema le ofrece
-      Ingeniería en Informática como plan destino."
+     "El alumno 1100001 cursa la Tecnicatura. El sistema le ofrece todos
+      los planes activos de la universidad menos su plan actual, con la
+      facultad de cada uno para filtrar el destino."
 
 ------------------------------------------------------------------------------
  PASO 5 - Detalle del plan destino (45 segundos)
@@ -285,7 +296,7 @@ Preparación previa:
    curl -s http://localhost:8080/api/v1/planes/1621
 
    Mostrar:
-     - 7 materias.
+     - 51 materias (plan real de Ingeniería en Informática).
      - Año, cuatrimestre, carga horaria.
      - Correlatividades de Programación II.
 
@@ -298,11 +309,15 @@ Preparación previa:
 ------------------------------------------------------------------------------
 
    curl -s -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/situacion
+   curl -s -H "X-Legajo: 1100002" http://localhost:8080/api/v1/estudiantes/situacion
 
    Mostrar:
-     - Plan 1121.
-     - 7 materias con estado APROBADA, FINAL, CURSANDO.
-     - Notas.
+     - 1100001: un solo plan activo (1121).
+     - 1100002: dos planes activos (1621 y 5010): alumno multi-carrera.
+
+   Decir:
+     "Un legajo puede estar anotado en más de una carrera a la vez; el
+      alumno elige cuál es el origen de la simulación."
 
 ------------------------------------------------------------------------------
  PASO 7 - Historial con recursadas (30 segundos)
@@ -323,19 +338,41 @@ Preparación previa:
    curl -s -X POST http://localhost:8080/api/v1/simulaciones \
      -H "X-Legajo: 1100001" \
      -H "Content-Type: application/json" \
-     -d '{"codigoPlanDestino":"1621"}'
+     -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1621"}'
 
    Mostrar y explicar:
-     - 7 ítems.
+     - 51 ítems (plan real de Ingeniería).
      - 3.4.069 reconocida por equivalencia Res. 123/21 desde 3.4.225.
-     - 3.4.164 reconocida como misma materia.
-     - 9.9.001 queda A_CURSAR porque 102 h no coinciden con 68 h.
-     - 9.9.002 queda FINAL.
-     - 9.9.006 queda CURSANDO.
-     - Resumen: 3 aprobadas, 1 final, 3 pendientes de cursado,
-       5 reconocidas, 2 pendientes del plan actual, 4 del plan nuevo.
-     - Título intermedio: 2 de 6, 33 %.
-     - Optativa sin correspondencia: 9.9.005.
+     - 3.4.164 y 3.4.072 reconocidas como misma materia.
+     - 3.4.075 queda FINAL y 3.4.207 CURSANDO.
+     - Resumen: 3 aprobadas, 1 final, 47 pendientes de cursado,
+       5 reconocidas, 14 pendientes del plan actual, 48 del plan nuevo.
+     - Título intermedio: 3 de 31, 10 %.
+     - Optativa sin correspondencia: OPT-TDS-I.
+
+   Cambio de facultad (multi-carrera, opcional):
+
+   curl -s -X POST http://localhost:8080/api/v1/simulaciones \
+     -H "X-Legajo: 1100002" \
+     -H "Content-Type: application/json" \
+     -d '{"codigoPlanOrigen":"1621","codigoPlanDestino":"5010"}'
+
+   Mostrar:
+     - Origen Ingeniería (1621) -> destino Contador Público (5010).
+     - 1.1.144 reconocida por equivalencia Res. 456/22 desde 3.4.164.
+     - 1.1.083, 1.3.067 y 1.3.068 reconocidas como misma materia.
+
+   Actualización de plan de la misma carrera (opcional):
+
+   curl -s -X POST http://localhost:8080/api/v1/simulaciones \
+     -H "X-Legajo: 1100002" \
+     -H "Content-Type: application/json" \
+     -d '{"codigoPlanOrigen":"5010","codigoPlanDestino":"5015"}'
+
+   Mostrar:
+     - Contador Público plan 2022 (5010) -> plan 2026 (5015).
+     - Las materias compartidas se reconocen como misma materia; la nueva
+       (1.3.077 Contabilidad y Nuevas Tecnologías) queda A_CURSAR.
 
 ------------------------------------------------------------------------------
  PASO 9 - Equivalencias (20 segundos)
@@ -344,9 +381,8 @@ Preparación previa:
    curl -s http://localhost:8080/api/v1/equivalencias
 
    Mostrar:
-     - Res. 123/21.
-     - 3.4.225 -> 3.4.069.
-     - Vigente desde 2021-03-01.
+     - Res. 456/22 (entre facultades, 1621 -> 5010: 3.4.164 -> 1.1.144).
+     - Res. 123/21 (3.4.225 -> 3.4.069, vigente desde 2021-03-01).
 
 ------------------------------------------------------------------------------
  PASO 10 - Casos de error (30 segundos, opcional pero recomendado)
@@ -369,7 +405,7 @@ Preparación previa:
      curl -i -X POST http://localhost:8080/api/v1/simulaciones \
        -H "X-Legajo: 1100001" \
        -H "Content-Type: application/json" \
-       -d '{"codigoPlanDestino":"1121"}'
+       -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1121"}'
 
      Esperado: 409.
 
@@ -426,7 +462,7 @@ B.5. Si algo falla en vivo:
 [ ] "docker compose ps" muestra db healthy y backend up.
 [ ] Logs muestran "Started SimuladorApplication".
 [ ] /actuator/health devuelve UP.
-[ ] Flyway muestra V1 y V2 aplicadas.
+[ ] Flyway muestra V1 a V4 aplicadas.
 [ ] Estudiante 1100001 existe.
 [ ] Los 7 endpoints responden.
 [ ] Los 3 casos de error devuelven 400/404/409.

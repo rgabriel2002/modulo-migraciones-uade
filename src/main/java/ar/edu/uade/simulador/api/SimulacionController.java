@@ -23,6 +23,7 @@ public class SimulacionController {
     public ResponseEntity<SimulacionResponse> simular(
             @Valid @RequestBody SimulacionRequest request,
             @RequestHeader("X-Legajo") String legajo) {
-        return ResponseEntity.ok(simulacionService.simular(legajo, request.codigoPlanDestino()));
+        return ResponseEntity.ok(
+                simulacionService.simular(legajo, request.codigoPlanOrigen(), request.codigoPlanDestino()));
     }
 }
