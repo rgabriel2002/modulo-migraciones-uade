@@ -28,3 +28,11 @@ management:
     web:
       exposure:
         include: health
+
+# Documentación de la API deshabilitada por defecto (no exponerla en prod).
+# Para desarrollo local: SPRINGDOC_API_DOCS_ENABLED=true SPRINGDOC_SWAGGER_UI_ENABLED=true
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

@@ -275,6 +275,42 @@ class ApiEndpointsTest {
     }
 
     @Test
+    void devuelve400SiElLegajoTieneFormatoInvalido() throws Exception {
+        mockMvc.perform(get("/api/v1/estudiantes/situacion").header("X-Legajo", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.mensaje")
+                        .value("el legajo debe tener entre 7 y 15 dígitos"));
+
+        mockMvc.perform(get("/api/v1/estudiantes/situacion").header("X-Legajo", "123"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void devuelve400SiElCodigoDePlanEsInvalido() throws Exception {
+        mockMvc.perform(post("/api/v1/simulaciones")
+                        .header("X-Legajo", LEGAJO)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"codigoPlanOrigen\":\"1121\",\"codigoPlanDestino\":\"../etc\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        mockMvc.perform(get("/api/v1/planes")
+                        .header("X-Legajo", LEGAJO)
+                        .param("excluir", "mal/codigo!"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void devuelve404ParaRutasInexistentes() throws Exception {
+        mockMvc.perform(get("/api/v1/ruta/inexistente"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
     void devuelve409SiElPlanDestinoEsElActual() throws Exception {
         mockMvc.perform(post("/api/v1/simulaciones")
                         .header("X-Legajo", LEGAJO)
