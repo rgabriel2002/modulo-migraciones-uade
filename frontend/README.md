@@ -222,13 +222,13 @@ Casos de error:
 | `GET` | `/api/v1/planes?excluir={codigo}` | `X-Legajo` | — | `usePlanes` |
 | `GET` | `/api/v1/planes/{codigo}` | — | — | `usePlanDetalle` |
 | `POST` | `/api/v1/simulaciones` | `X-Legajo` | `{ "codigoPlanOrigen": "1121", "codigoPlanDestino": "1621" }` | `useSimulacion` |
-| `POST` | `/api/v1/reportes/simulacion` | — | `{ "legajo": "1100001", "simulacion": {…} }` | `descargarReportePdf` |
+| `POST` | `/api/v1/reportes/simulacion` | `X-Legajo` | `{ "codigoPlanOrigen": "1121", "codigoPlanDestino": "1621" }` | `descargarReportePdf` |
 
 `GET /planes/{codigo}` se usa solo para el mapa de correlativas. El backend
 expone además `GET /estudiantes/historial` y `GET /equivalencias`, pero este
 flujo no los necesita: el `POST` ya devuelve el cruce resuelto. El PDF se
-genera reenviando la respuesta de la simulación (`descargarReportePdf`),
-sin re-ejecutar el motor.
+genera recalculando la simulación en el servidor (`descargarReportePdf`):
+el documento sale de datos reales, no de lo que envíe el cliente.
 
 ### Ejemplo del POST
 
@@ -467,9 +467,9 @@ conservan los fades y se quita el desplazamiento.
   el plan elegido como origen se excluye del listado (`?excluir=`).
 - **`{ status, body }`**: el cliente tipa la respuesta real de la simulación.
 - **`HashRouter`**: evita tocar el backend con un fallback SPA.
-- **“Descargar PDF”**: genera el reporte en PDF reenviando al backend la
-  misma respuesta de la simulación (`POST /reportes/simulacion`), sin
-  re-ejecutar el motor.
+- **“Descargar PDF”**: el backend recalcula la simulación en el servidor
+  (`POST /reportes/simulacion` con `X-Legajo` y origen/destino) y entrega el
+  acta; el documento no depende de datos enviados por el cliente.
 - **Mapa de solo lectura**: los estados vienen de la simulación; no se editan
   desde el mapa.
 - **Pestaña en la URL**: `?vista=mapa` permite deep links y sobrevive al

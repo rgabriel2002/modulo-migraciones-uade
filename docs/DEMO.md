@@ -56,16 +56,20 @@ curl -s http://localhost:8080/actuator/health
 1. **`docker compose ps`** — mostrar db healthy y backend up.
 2. **`docker compose logs --tail=50 backend`** — mostrar Flyway V1 a V4 y "Started SimuladorApplication".
 3. **Health** — `curl http://localhost:8080/actuator/health` → `UP`.
-4. **Swagger** — abrir `http://localhost:8080/swagger-ui.html` y mostrar los endpoints agrupados.
-5. **Planes** — `curl -H "X-Legajo: 1100001" "http://localhost:8080/api/v1/planes?excluir=1121"` → `1621`, `5010`, `5015`, `5020`, `5030`, `5040` con facultad.
+4. **Planes** — `curl -H "X-Legajo: 1100001" "http://localhost:8080/api/v1/planes?excluir=1121"` → `1621`, `5010`, `5015`, `5020`, `5030`, `5040` con facultad.
 5. **Detalle plan** — `curl http://localhost:8080/api/v1/planes/1621` → 51 materias + correlatividades.
 6. **Situación** — `curl -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/situacion` → `planesActivos: [1121]`; con `1100002` → `[1621, 5010]` (multi-carrera).
 7. **Historial** — `curl -H "X-Legajo: 1100001" http://localhost:8080/api/v1/estudiantes/historial` → recursadas de `3.4.075`.
 8. **Simulación** — `POST /api/v1/simulaciones` con `codigoPlanOrigen: "1121"` y `codigoPlanDestino: "1621"` → 51 ítems, 3 aprobadas, equivalencia `Res. 123/21`, título intermedio 3/31 = 10%.
 9. **Cambio de facultad** — `POST` con `X-Legajo: 1100002`, origen `1621` y destino `5010` → reconocimientos entre facultades (`Res. 456/22`).
 10. **Actualización de plan** — `POST` con `X-Legajo: 1100002`, origen `5010` y destino `5015` (Contador 2026, misma carrera) → materias compartidas reconocidas por MISMA_MATERIA.
-11. **Equivalencias** — `curl http://localhost:8080/api/v1/equivalencias` → `Res. 456/22` y `Res. 123/21`.
-12. **Errores** — 400 (sin header), 404 (legajo/plan inexistente, origen no activo para el legajo), 409 (mismo plan).
+11. **Reporte PDF** — en la UI, presionar **Descargar PDF** (o `POST /api/v1/reportes/simulacion` con `X-Legajo` y origen/destino): el backend recalcula y entrega el acta con la condición coloreada por estado.
+12. **Equivalencias** — `curl http://localhost:8080/api/v1/equivalencias` → `Res. 456/22` y `Res. 123/21`.
+13. **Errores** — 400 (sin header, formatos inválidos), 404 (legajo/plan inexistente, origen no activo), 409 (mismo plan).
+
+Swagger (opcional, solo desarrollo): levantar el backend con
+`SPRINGDOC_API_DOCS_ENABLED=true SPRINGDOC_SWAGGER_UI_ENABLED=true` y abrir
+`http://localhost:8080/swagger-ui.html`.
 
 ## IntelliJ: `api.http`
 

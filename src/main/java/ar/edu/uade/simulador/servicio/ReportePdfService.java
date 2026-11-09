@@ -2,7 +2,6 @@ package ar.edu.uade.simulador.servicio;
 
 import ar.edu.uade.simulador.dto.ItemSimuladoDTO;
 import ar.edu.uade.simulador.dto.MateriaRefDTO;
-import ar.edu.uade.simulador.dto.ReporteSimulacionRequest;
 import ar.edu.uade.simulador.dto.SimulacionResponse;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
@@ -22,8 +21,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
- * Genera el PDF del reporte de equivalencias a partir de la respuesta de la
- * simulación que el usuario ya vio. Columnas del acta:
+ * Genera el PDF del reporte de equivalencias a partir de una respuesta de
+ * simulación calculada por el servidor. Columnas del acta:
  * código origen, plan origen, materia origen, condición, código destino,
  * plan destino y materia destino.
  */
@@ -43,8 +42,7 @@ public class ReportePdfService {
     private static final float ANCHO_MATERIA = 3.1f;
     private static final float ANCHO_CONDICION = 1.5f;
 
-    public byte[] generar(ReporteSimulacionRequest request) {
-        SimulacionResponse s = request.simulacion();
+    public byte[] generar(String legajo, SimulacionResponse s) {
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
 
         try {
@@ -59,7 +57,7 @@ public class ReportePdfService {
             doc.add(titulo);
 
             Paragraph info = new Paragraph(
-                    "Legajo: " + request.legajo()
+                    "Legajo: " + legajo
                             + "    Origen: " + s.planOrigen().carrera()
                             + " (Plan " + s.planOrigen().codigo() + ")"
                             + "    Destino: " + s.planDestino().carrera()

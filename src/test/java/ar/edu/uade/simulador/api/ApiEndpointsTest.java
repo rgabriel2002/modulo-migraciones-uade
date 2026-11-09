@@ -20,7 +20,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -320,19 +319,10 @@ class ApiEndpointsTest {
 
     @Test
     void generaElReportePdfDeUnaSimulacion() throws Exception {
-        MvcResult simulacion = mockMvc.perform(post("/api/v1/simulaciones")
+        mockMvc.perform(post("/api/v1/reportes/simulacion")
                         .header("X-Legajo", LEGAJO)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"codigoPlanOrigen\":\"1121\",\"codigoPlanDestino\":\"1621\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        String body = "{\"legajo\":\"" + LEGAJO + "\",\"simulacion\":"
-                + simulacion.getResponse().getContentAsString() + "}";
-
-        mockMvc.perform(post("/api/v1/reportes/simulacion")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CONTENT_TYPE,
                         startsWith("application/pdf")))
@@ -348,10 +338,35 @@ class ApiEndpointsTest {
     }
 
     @Test
-    void devuelve400SiElReporteNoTraeSimulacion() throws Exception {
+    void devuelve400SiElReporteNoTraeLosPlanes() throws Exception {
         mockMvc.perform(post("/api/v1/reportes/simulacion")
+                        .header("X-Legajo", LEGAJO)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"legajo\":\"" + LEGAJO + "\"}"))
+                        .content("{\"codigoPlanDestino\":\"1621\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void devuelve400SiElReporteTraeUnLegajoInvalido() throws Exception {
+        mockMvc.perform(post("/api/v1/reportes/simulacion")
+                        .header("X-Legajo", "abc")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"codigoPlanOrigen\":\"1121\",\"codigoPlanDestino\":\"1621\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void devuelve400SiLosFiltrosDeEquivalenciasSonInvalidos() throws Exception {
+        mockMvc.perform(get("/api/v1/equivalencias").param("planOrigen", "mal!"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void devuelve400SiElCodigoDePlanDeLaRutaEsInvalido() throws Exception {
+        mockMvc.perform(get("/api/v1/planes/mal!"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
