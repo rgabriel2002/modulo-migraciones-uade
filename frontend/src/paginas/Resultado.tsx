@@ -81,17 +81,17 @@ export function Resultado() {
     setSearchParams(params, { replace: true });
   };
 
-  // Genera el PDF con la misma respuesta que el usuario está viendo.
+  // Genera el PDF; el backend recalcula la simulación en el servidor.
   const descargarPdf = async () => {
-    if (!legajo || !resultado) return;
+    if (!legajo || !planOrigen || !planDestino) return;
     setErrorPdf(null);
     setDescargando(true);
     try {
-      const blob = await descargarReportePdf(legajo, resultado);
+      const blob = await descargarReportePdf(legajo, planOrigen, planDestino);
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement('a');
       enlace.href = url;
-      enlace.download = `simulacion-${resultado.planOrigen.codigo}-a-${resultado.planDestino.codigo}.pdf`;
+      enlace.download = `simulacion-${planOrigen}-a-${planDestino}.pdf`;
       document.body.appendChild(enlace);
       enlace.click();
       enlace.remove();

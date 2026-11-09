@@ -109,10 +109,12 @@ export function postSimulacion(
   });
 }
 
-/* Descarga el PDF del reporte usando la respuesta de simulación ya obtenida. */
+/* Descarga el PDF del reporte. El backend recalcula la simulación en el
+   servidor: el documento sale de datos reales, no de lo que envíe el cliente. */
 export async function descargarReportePdf(
   legajo: string,
-  simulacion: SimulacionResponse
+  codigoPlanOrigen: string,
+  codigoPlanDestino: string
 ): Promise<Blob> {
   let response: Response;
   try {
@@ -122,7 +124,7 @@ export async function descargarReportePdf(
         ...headers(legajo),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ legajo, simulacion }),
+      body: JSON.stringify({ codigoPlanOrigen, codigoPlanDestino }),
     });
   } catch {
     throw new ApiError(

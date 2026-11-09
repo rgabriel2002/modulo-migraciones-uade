@@ -444,10 +444,11 @@ Testcontainers levanta su propio PostgreSQL; no usa el contenedor de `docker-com
 ./mvnw test
 ```
 
-Son 17 tests:
+Son 36 tests:
 
-- 11 de API.
+- 26 de API.
 - 5 del motor.
+- 4 del control de tasa (rate limiting).
 - 1 de carga de contexto.
 
 Los reportes quedan en:
@@ -511,7 +512,7 @@ completá el header `X-Legajo` (por ejemplo `1100001`).
 | `GET` | `/api/v1/estudiantes/situacion` | Sí | Planes activos del estudiante (multi-carrera) |
 | `GET` | `/api/v1/estudiantes/historial` | Sí | Historial académico con cursadas y recursadas |
 | `POST` | `/api/v1/simulaciones` | Sí | Simula la migración a otro plan |
-| `POST` | `/api/v1/reportes/simulacion` | No | Genera el PDF del reporte desde una respuesta de simulación |
+| `POST` | `/api/v1/reportes/simulacion` | Sí | Recalcula la simulación y genera el PDF del reporte |
 | `GET` | `/api/v1/equivalencias` | No | Lista equivalencias, con filtros opcionales |
 
 ---
@@ -891,26 +892,25 @@ Errores:
 
 ### `POST /api/v1/reportes/simulacion`
 
-Genera el **PDF del reporte de equivalencias** a partir de una respuesta de
-simulación ya calculada (el cliente reenvía la que obtuvo, así el documento
-refleja exactamente lo que vio el usuario, sin re-ejecutar el motor).
+Genera el **PDF del reporte de equivalencias** recalculando la simulación en
+el servidor: el documento sale de datos reales, no de lo que envíe el cliente.
+
+**Header requerido:** `X-Legajo`
 
 **Body:**
 
 ```json
 {
-  "legajo": "1100001",
-  "simulacion": { ...respuesta de POST /api/v1/simulaciones... }
+  "codigoPlanOrigen": "1121",
+  "codigoPlanDestino": "1621"
 }
 ```
 
 ```bash
-SIM=$(curl -s -X POST http://localhost:8080/api/v1/simulaciones \
-  -H "X-Legajo: 1100001" -H "Content-Type: application/json" \
-  -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1621"}')
-curl -s -X POST http://localhost:8080/api/v1/reportes/simulacion \
+curl -X POST http://localhost:8080/api/v1/reportes/simulacion \
+  -H "X-Legajo: 1100001" \
   -H "Content-Type: application/json" \
-  -d "{\"legajo\":\"1100001\",\"simulacion\":$SIM}" \
+  -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1621"}' \
   -o reporte.pdf
 ```
 
@@ -926,7 +926,8 @@ legible impreso en blanco y negro.
 
 Errores:
 
-- `400` si falta el legajo o la simulación en el body.
+- `400` si falta `X-Legajo`, si el legajo o los códigos de plan son inválidos.
+- `404`/`409` igual que `POST /simulaciones` (se recalcula con el motor).
 
 ---
 
@@ -1317,7 +1318,7 @@ Los tests de API usan Testcontainers y necesitan Docker corriendo. Los tests del
 ## Limitaciones conocidas
 
 - **Sin autenticación real:** `SecurityConfig` permite todas las requests y la identidad se toma de `X-Legajo`, que es falsificable. No exponer a Internet sin implementar JWT/OAuth2.
-- **Swagger expuesto sin autenticación:** `/swagger-ui.html` y `/v3/api-docs` están abiertos. Apagarlos fuera de desarrollo.
+- **Swagger deshabilitado por defecto:** `/swagger-ui.html` y `/v3/api-docs` no responden. Para desarrollo se reactiva con las variables `SPRINGDOC_API_DOCS_ENABLED` / `SPRINGDOC_SWAGGER_UI_ENABLED`.
 - **Correlatividades no usadas por el motor:** se muestran en el detalle del plan, pero no bloquean ni ordenan la simulación.
 - **Datos demo en migraciones principales:** `V2__datos_demo.sql` se ejecuta en cualquier entorno. Conviene separarlo por perfil.
 - **Asignación greedy:** el motor recorre las materias destino en orden y asigna la primera mejor candidata; no hace una optimización global.

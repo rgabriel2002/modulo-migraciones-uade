@@ -38,7 +38,11 @@ public class PlanController {
     }
 
     @GetMapping("/{codigo}")
-    public ResponseEntity<PlanDetalleResponse> obtenerPlan(@PathVariable String codigo) {
+    public ResponseEntity<PlanDetalleResponse> obtenerPlan(
+            @PathVariable
+            @Pattern(regexp = Validaciones.PATRON_CODIGO_PLAN,
+                    message = "el código de plan es inválido")
+            String codigo) {
         return ResponseEntity.ok(planService.obtenerPlan(codigo));
     }
 }
