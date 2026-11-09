@@ -3,20 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, descargarReportePdf } from '@/api/cliente';
-import { simulacionesPorModo, type ModoDatos } from '@/api/fixtures';
 import { usePlanDetalle } from '@/hooks/usePlanDetalle';
 import { useSimulacion } from '@/hooks/useSimulacion';
-import { ToggleDatos } from '@/dev/ToggleDatos';
-import { normalizarModo } from '@/dev/modoDatos';
 import { Banner } from '@/componentes/Banner';
 import { Boton } from '@/componentes/Boton';
 import { Kpis } from '@/componentes/Kpis';
 import { MapaCorrelativas } from '@/componentes/MapaCorrelativas';
-import { ModalJson } from '@/componentes/ModalJson';
 import { Pestanas } from '@/componentes/Pestanas';
 import { TablaResultado } from '@/componentes/TablaResultado';
 import {
-  IconoCodigo,
   IconoFlecha,
   IconoImpresora,
   IconoInfo,
@@ -31,23 +26,15 @@ export function Resultado() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { mutate, data, error, isPending } = useSimulacion();
-  const [jsonAbierto, setJsonAbierto] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [errorPdf, setErrorPdf] = useState<string | null>(null);
   const ultimaSimulacion = useRef<string | null>(null);
-
-  // Modo de datos del toggle dev-only. En producción siempre es "demo".
-  const modo: ModoDatos = import.meta.env.DEV
-    ? normalizarModo(searchParams.get('data'))
-    : 'demo';
 
   // Pestaña activa: informe por defecto, mapa con ?vista=mapa.
   const vista = searchParams.get('vista') === 'mapa' ? 'mapa' : 'informe';
 
   useEffect(() => {
     if (!legajo || !planOrigen || !planDestino) return;
-    // Con un fixture no se llama al backend.
-    if (modo !== 'demo') return;
     const clave = `${legajo}/${planOrigen}/${planDestino}`;
     if (ultimaSimulacion.current === clave) return;
     ultimaSimulacion.current = clave;
@@ -56,7 +43,7 @@ export function Resultado() {
       codigoPlanOrigen: planOrigen,
       codigoPlanDestino: planDestino,
     });
-  }, [legajo, planOrigen, planDestino, mutate, modo]);
+  }, [legajo, planOrigen, planDestino, mutate]);
 
   const reintentar = () => {
     if (!legajo || !planOrigen || !planDestino) return;
@@ -68,26 +55,13 @@ export function Resultado() {
   };
 
   const errorApi = error instanceof ApiError ? error : null;
-  const mensajeError =
-    modo === 'demo'
-      ? errorApi
-        ? errorApi.message
-        : error
-          ? 'Ocurrió un error inesperado.'
-          : null
+  const mensajeError = errorApi
+    ? errorApi.message
+    : error
+      ? 'Ocurrió un error inesperado.'
       : null;
 
-  const respuestaJson =
-    modo === 'demo'
-      ? data
-        ? { status: data.status, body: data.body }
-        : errorApi
-          ? { status: errorApi.status, body: errorApi.body }
-          : null
-      : { status: 200, body: simulacionesPorModo[modo] };
-
-  const resultado =
-    modo === 'demo' ? (data?.body ?? null) : simulacionesPorModo[modo];
+  const resultado = data?.body ?? null;
 
   const planDetalle = usePlanDetalle(
     planDestino ?? null,
@@ -99,13 +73,6 @@ export function Resultado() {
   const mensajePlan = planDetalle.error
     ? (errorPlan?.message ?? 'No se pudo cargar el plan de estudios.')
     : null;
-
-  const cambiarModo = (nuevo: ModoDatos) => {
-    const params = new URLSearchParams(searchParams);
-    if (nuevo === 'demo') params.delete('data');
-    else params.set('data', nuevo);
-    setSearchParams(params, { replace: true });
-  };
 
   const cambiarVista = (nueva: string) => {
     const params = new URLSearchParams(searchParams);
@@ -192,15 +159,6 @@ export function Resultado() {
             <Boton variant="secundario" onClick={() => navigate('/')}>
               Volver
             </Boton>
-            {respuestaJson && (
-              <Boton
-                variant="secundario"
-                onClick={() => setJsonAbierto(true)}
-              >
-                <IconoCodigo className="h-4 w-4" />
-                Ver JSON
-              </Boton>
-            )}
           </div>
         </>
       )}
@@ -341,15 +299,7 @@ export function Resultado() {
             <Boton variant="secundario" onClick={() => navigate('/')}>
               Volver
             </Boton>
-            <Boton
-              variant="secundario"
-              onClick={() => setJsonAbierto(true)}
-              disabled={descargando}
-            >
-              <IconoCodigo className="h-4 w-4" />
-              Ver JSON
-            </Boton>
-            <Boton onClick={descargarPdf} disabled={descargando || !respuestaJson}>
+            <Boton onClick={descargarPdf} disabled={descargando || !resultado}>
               <IconoImpresora className="h-4 w-4" />
               {descargando ? 'Generando…' : 'Descargar PDF'}
             </Boton>
@@ -361,21 +311,6 @@ export function Resultado() {
             </Banner>
           )}
         </div>
-      )}
-
-      {respuestaJson && (
-        <ModalJson
-          abierto={jsonAbierto}
-          onCerrar={() => setJsonAbierto(false)}
-          metodo="POST"
-          ruta="/api/v1/simulaciones"
-          status={respuestaJson.status}
-          body={respuestaJson.body}
-        />
-      )}
-
-      {import.meta.env.DEV && (
-        <ToggleDatos modo={modo} onCambiar={cambiarModo} />
       )}
     </div>
   );

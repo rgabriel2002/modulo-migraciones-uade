@@ -171,46 +171,6 @@
     color: var(--color-ink);
   }
 
-  /* Entrada del modal: ocasional, 160-200ms, desde scale(0.96), nunca desde 0. */
-  .modal-overlay {
-    visibility: visible;
-    opacity: 1;
-    transition:
-      opacity 160ms var(--ease-out),
-      visibility 0s linear 0s;
-
-    @starting-style {
-      opacity: 0;
-    }
-  }
-
-  .modal-overlay.is-cerrado {
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
-    transition:
-      opacity 120ms var(--ease-out),
-      visibility 0s linear 140ms;
-  }
-
-  .modal-panel {
-    opacity: 1;
-    transform: scale(1);
-    transition:
-      transform 200ms var(--ease-out),
-      opacity 200ms var(--ease-out);
-
-    @starting-style {
-      transform: scale(0.96);
-    }
-  }
-
-  .modal-panel.is-cerrado {
-    opacity: 0;
-    transform: scale(0.98);
-    transition-duration: 140ms;
-  }
-
   /* Entrada del resultado y del banner de error: cambios de estado ocasionales. */
   .resultado-entrada {
     transition:
@@ -734,27 +694,6 @@
 @media (prefers-reduced-motion: reduce) {
   .btn:active:not(:disabled) {
     transform: none;
-  }
-
-  .modal-panel {
-    transform: none;
-    transition: opacity 100ms var(--ease-out);
-
-    @starting-style {
-      transform: none;
-    }
-  }
-
-  .modal-panel.is-cerrado {
-    transform: none;
-    opacity: 0;
-    transition-duration: 100ms;
-  }
-
-  .modal-overlay.is-cerrado {
-    transition:
-      opacity 100ms var(--ease-out),
-      visibility 0s linear 100ms;
   }
 
   .resultado-entrada {
