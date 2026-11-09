@@ -114,8 +114,7 @@ El front queda servido en **http://localhost:8080/**.
    - **Informe de equivalencias**: KPIs, avance del título intermedio, tabla de materias del plan destino con estado y reconocimiento, y optativas aprobadas sin correspondencia.
    - **Mapa de correlativas (Plan de carrera)**: materias agrupadas por año y cuatrimestre, con flechas de correlatividad y los estados de la simulación.
 7. Presionar **Descargar PDF** para bajar el reporte en PDF (acta de
-   equivalencias con las materias reconocidas); **Ver JSON** abre el crudo
-   de la respuesta para depurar.
+   equivalencias con las materias reconocidas).
 
 El legajo se persiste en `localStorage` con la clave `simulador-legajo`. La
 pestaña activa se persiste en la URL con `?vista=mapa` (sin el parámetro se
@@ -158,8 +157,6 @@ No modifica datos ni agrega endpoints: es una vista de solo lectura.
 |---|---|
 | `/#/simulacion/1100001/1121/1621` | Informe |
 | `/#/simulacion/1100001/1121/1621?vista=mapa` | Mapa |
-
-`?vista=mapa` convive con `?data=peor` del toggle de desarrollo.
 
 ### Implementación
 
@@ -309,7 +306,6 @@ frontend/
     ├── index.css
     ├── api/
     │   ├── cliente.ts
-    │   ├── fixtures.ts
     │   └── tipos.ts
     ├── hooks/
     │   ├── useLegajo.ts
@@ -334,15 +330,11 @@ frontend/
     │   ├── EstadoBadge.tsx
     │   ├── Pestanas.tsx
     │   ├── MapaCorrelativas.tsx
-    │   ├── ModalJson.tsx
     │   └── Iconos.tsx
     ├── paginas/
     │   ├── Seleccion.tsx
     │   ├── Resultado.tsx
     │   └── NoEncontrado.tsx
-    ├── dev/
-    │   ├── ToggleDatos.tsx
-    │   └── modoDatos.ts
     └── utils/
         ├── cn.ts
         └── mapa.ts
@@ -353,9 +345,8 @@ frontend/
 | `main.tsx` | Punto de entrada; monta React e importa `index.css` |
 | `App.tsx` | `HashRouter` + `QueryClientProvider` + rutas |
 | `index.css` | Tailwind, paleta UADE y clases base |
-| `api/cliente.ts` | `fetch`, header `X-Legajo`, `ApiError`, `{ status, body }` |
+| `api/cliente.ts` | `fetch`, header `X-Legajo`, `ApiError`, `{ status, body }` y descarga del PDF |
 | `api/tipos.ts` | Tipos espejo de los DTOs Java |
-| `api/fixtures.ts` | Respuestas de demo, peor caso, vacío y un solo ítem (solo dev) |
 | `hooks/useLegajo.ts` | Persistencia del legajo en `localStorage` |
 | `hooks/useSituacion.ts` | `GET /estudiantes/situacion` (planes activos) |
 | `hooks/usePlanes.ts` | `GET /planes?excluir=` |
@@ -365,7 +356,6 @@ frontend/
 | `componentes/Pestanas.tsx` | Pestañas accesibles del resultado |
 | `componentes/MapaCorrelativas.tsx` | Mapa de correlativas con SVG propio |
 | `paginas/` | Pantallas del flujo |
-| `dev/` | Toggle de datos de prueba; solo se monta con `import.meta.env.DEV` |
 | `utils/cn.ts` | Unión condicional de clases |
 | `utils/mapa.ts` | Layout puro del mapa (filas y columnas) |
 
@@ -468,31 +458,6 @@ conservan los fades y se quita el desplazamiento.
 
 ---
 
-## Datos de peor caso (solo desarrollo)
-
-En `npm run dev`, la pantalla de Resultado muestra abajo un control
-`Datos: Demo / Peor caso / Vacío / Uno`. Cambia la respuesta de la
-simulación sin tocar el componente ni llamar al backend, y la selección
-queda en la URL:
-
-```text
-http://localhost:5173/#/simulacion/1100001/1121/1621?data=peor
-```
-
-| Modo | Qué prueba |
-|---|---|
-| `demo` | Respuesta real del backend |
-| `peor` | Nombres y códigos en el límite del esquema, 64 materias, nulos, HTML literal, muchas equivalencias |
-| `vacio` | Plan sin materias |
-| `uno` | Un solo ítem y contadores en 1 |
-
-El toggle y los fixtures se eliminan del bundle de producción: el bloque
-está detrás de `import.meta.env.DEV` y `npm run build` no incluye sus
-textos (verificado sobre `dist/`). Por eso no se copian a
-`src/main/resources/static/` con `build:static`.
-
----
-
 ## Decisiones de diseño
 
 - **Front delgado**: no replica reglas del motor; solo consume y muestra.
@@ -500,11 +465,11 @@ textos (verificado sobre `dist/`). Por eso no se copian a
   más de una carrera, el alumno elige la de origen.
 - **Destino en cascada**: facultad → carrera → plan, agrupando `GET /planes`;
   el plan elegido como origen se excluye del listado (`?excluir=`).
-- **`{ status, body }`**: el cliente devuelve la respuesta real para el visor JSON.
+- **`{ status, body }`**: el cliente tipa la respuesta real de la simulación.
 - **`HashRouter`**: evita tocar el backend con un fallback SPA.
 - **“Descargar PDF”**: genera el reporte en PDF reenviando al backend la
   misma respuesta de la simulación (`POST /reportes/simulacion`), sin
-  re-ejecutar el motor. “Ver JSON” queda para depuración.
+  re-ejecutar el motor.
 - **Mapa de solo lectura**: los estados vienen de la simulación; no se editan
   desde el mapa.
 - **Pestaña en la URL**: `?vista=mapa` permite deep links y sobrevive al
