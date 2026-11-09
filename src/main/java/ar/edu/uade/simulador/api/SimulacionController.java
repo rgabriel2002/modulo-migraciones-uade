@@ -3,6 +3,7 @@ package ar.edu.uade.simulador.api;
 import ar.edu.uade.simulador.dto.SimulacionRequest;
 import ar.edu.uade.simulador.dto.SimulacionResponse;
 import ar.edu.uade.simulador.servicio.SimulacionService;
+import ar.edu.uade.simulador.validacion.Validaciones;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,8 @@ public class SimulacionController {
     public ResponseEntity<SimulacionResponse> simular(
             @Valid @RequestBody SimulacionRequest request,
             @RequestHeader("X-Legajo")
-            @Pattern(regexp = "\\d{7,15}", message = "el legajo debe tener entre 7 y 15 dígitos")
+            @Pattern(regexp = Validaciones.PATRON_LEGAJO,
+                    message = "el legajo debe tener entre 7 y 15 dígitos")
             String legajo) {
         return ResponseEntity.ok(
                 simulacionService.simular(legajo, request.codigoPlanOrigen(), request.codigoPlanDestino()));

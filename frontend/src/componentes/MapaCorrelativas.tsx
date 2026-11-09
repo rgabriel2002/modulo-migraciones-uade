@@ -246,131 +246,140 @@ export function MapaCorrelativas({ plan, items }: MapaCorrelativasProps) {
                   if (!objetivo.closest('[data-codigo]')) setFoco(null);
                 }}
               >
-            <svg className="mapa-flechas" aria-hidden="true">
-              <defs>
-                <marker
-                  id="mapa-punta"
-                  viewBox="0 0 10 10"
-                  refX="9"
-                  refY="5"
-                  markerWidth="7"
-                  markerHeight="7"
-                  orient="auto"
-                >
-                  <path d="M0,0 L10,5 L0,10 z" fill="#3b64b5" />
-                </marker>
-              </defs>
-              {flechas.map((flecha) => {
-                const resaltada =
-                  foco !== null &&
-                  (flecha.a === foco || flecha.b === foco);
-                return (
-                  <path
-                    key={`${flecha.a}-${flecha.b}`}
-                    d={flecha.d}
-                    fill="none"
-                    stroke="#3b64b5"
-                    strokeWidth={1.6}
-                    markerEnd="url(#mapa-punta)"
-                    className={resaltada ? 'is-on' : undefined}
-                  />
-                );
-              })}
-            </svg>
+                <svg className="mapa-flechas" aria-hidden="true">
+                  <defs>
+                    <marker
+                      id="mapa-punta"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="7"
+                      markerHeight="7"
+                      orient="auto"
+                    >
+                      <path d="M0,0 L10,5 L0,10 z" fill="#3b64b5" />
+                    </marker>
+                  </defs>
+                  {flechas.map((flecha) => {
+                    const resaltada =
+                      foco !== null &&
+                      (flecha.a === foco || flecha.b === foco);
+                    return (
+                      <path
+                        key={`${flecha.a}-${flecha.b}`}
+                        d={flecha.d}
+                        fill="none"
+                        stroke="#3b64b5"
+                        strokeWidth={1.6}
+                        markerEnd="url(#mapa-punta)"
+                        className={resaltada ? 'is-on' : undefined}
+                      />
+                    );
+                  })}
+                </svg>
 
-            {layout.filas.map((fila, indice) => {
-              const mostrarAnio =
-                indice === 0 ||
-                layout.filas[indice - 1].anio !== fila.anio;
-              const celdas: Array<MateriaPlan | null> = Array.from(
-                { length: layout.ncols },
-                () => null
-              );
-              for (const materia of fila.materias) {
-                celdas[layout.columna[materia.codigo]] = materia;
-              }
+                {layout.filas.map((fila, indice) => {
+                  const mostrarAnio =
+                    indice === 0 ||
+                    layout.filas[indice - 1].anio !== fila.anio;
+                  const celdas: Array<MateriaPlan | null> = Array.from(
+                    { length: layout.ncols },
+                    () => null
+                  );
+                  for (const materia of fila.materias) {
+                    celdas[layout.columna[materia.codigo]] = materia;
+                  }
 
-              return (
-                <Fragment
-                  key={`${fila.anio}-${fila.cuatrimestre ?? 'anual'}-${indice}`}
-                >
-                  {mostrarAnio && (
-                    <div className="mapa-anio">
-                      {ORDINAL[fila.anio] ?? `${fila.anio}° Año`}
-                    </div>
-                  )}
-                  <div
-                    className="mapa-fila"
-                    style={{
-                      gridTemplateColumns: `repeat(${layout.ncols}, minmax(0, 1fr))`,
-                    }}
-                  >
-                    {celdas.map((materia, celda) => {
-                      if (!materia) {
-                        return (
-                          <div
-                            key={`vacio-${celda}`}
-                            className="mapa-mat mapa-vacio"
-                            aria-hidden="true"
-                          />
-                        );
-                      }
-
-                      const estado =
-                        estadoPorCodigo.get(materia.codigo) ?? 'A_CURSAR';
-                      const resaltada =
-                        relacionadas?.has(materia.codigo) ?? false;
-
-                      return (
-                        <div
-                          key={materia.codigo}
-                          data-codigo={materia.codigo}
-                          data-fila={fila.indice}
-                          tabIndex={0}
-                          role="group"
-                          aria-label={etiquetaMateria(materia, estado)}
-                          className={cn(
-                            'mapa-mat',
-                            CLASE_ESTADO[estado],
-                            materia.optativa && 'es-optativa',
-                            foco && resaltada && 'is-on'
-                          )}
-                          onPointerEnter={(e) => {
-                            if (e.pointerType === 'mouse') {
-                              setFoco(materia.codigo);
-                            }
-                          }}
-                          onFocus={(e) => {
-                            if (e.currentTarget.matches(':focus-visible')) {
-                              setFoco(materia.codigo);
-                            }
-                          }}
-                          onBlur={() => setFoco(null)}
-                          onClick={() => {
-                            const soloHover = window.matchMedia(
-                              '(hover: hover) and (pointer: fine)'
-                            ).matches;
-                            if (soloHover) return;
-                            setFoco((prev) =>
-                              prev === materia.codigo ? null : materia.codigo
-                            );
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') setFoco(null);
-                          }}
-                        >
-                          <span className="mapa-cod">{materia.codigo}</span>
-                          <span className="mapa-nombre">{materia.nombre}</span>
-                          {materia.optativa && (
-                            <span className="mapa-tag">Optativa</span>
-                          )}
+                  return (
+                    <Fragment
+                      key={`${fila.anio}-${fila.cuatrimestre ?? 'anual'}-${indice}`}
+                    >
+                      {mostrarAnio && (
+                        <div className="mapa-anio">
+                          {ORDINAL[fila.anio] ?? `${fila.anio}° Año`}
                         </div>
-                      );
-                    })}
-                  </div>
-                </Fragment>
-              );
-            })}
+                      )}
+                      <div
+                        className="mapa-fila"
+                        style={{
+                          gridTemplateColumns: `repeat(${layout.ncols}, minmax(0, 1fr))`,
+                        }}
+                      >
+                        {celdas.map((materia, celda) => {
+                          if (!materia) {
+                            return (
+                              <div
+                                key={`vacio-${celda}`}
+                                className="mapa-mat mapa-vacio"
+                                aria-hidden="true"
+                              />
+                            );
+                          }
+
+                          const estado =
+                            estadoPorCodigo.get(materia.codigo) ?? 'A_CURSAR';
+                          const resaltada =
+                            relacionadas?.has(materia.codigo) ?? false;
+
+                          return (
+                            <div
+                              key={materia.codigo}
+                              data-codigo={materia.codigo}
+                              data-fila={fila.indice}
+                              tabIndex={0}
+                              role="group"
+                              aria-label={etiquetaMateria(materia, estado)}
+                              className={cn(
+                                'mapa-mat',
+                                CLASE_ESTADO[estado],
+                                materia.optativa && 'es-optativa',
+                                foco && resaltada && 'is-on'
+                              )}
+                              onPointerEnter={(e) => {
+                                if (e.pointerType === 'mouse') {
+                                  setFoco(materia.codigo);
+                                }
+                              }}
+                              onFocus={(e) => {
+                                if (e.currentTarget.matches(':focus-visible')) {
+                                  setFoco(materia.codigo);
+                                }
+                              }}
+                              onBlur={() => setFoco(null)}
+                              onClick={() => {
+                                // En pantallas táctiles el tap alterna el
+                                // resaltado; en escritorio lo maneja el hover,
+                                // por eso el tap no actúa en ese caso.
+                                const soloHover = window.matchMedia(
+                                  '(hover: hover) and (pointer: fine)'
+                                ).matches;
+                                if (soloHover) return;
+                                setFoco((prev) =>
+                                  prev === materia.codigo
+                                    ? null
+                                    : materia.codigo
+                                );
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape') setFoco(null);
+                              }}
+                            >
+                              <span className="mapa-cod">
+                                {materia.codigo}
+                              </span>
+                              <span className="mapa-nombre">
+                                {materia.nombre}
+                              </span>
+                              {materia.optativa && (
+                                <span className="mapa-tag">Optativa</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Fragment>
+                  );
+                })}
               </div>
             </div>
           </div>

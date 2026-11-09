@@ -299,7 +299,7 @@ export function Seleccion() {
               title="Disponible después de simular"
             >
               <IconoImpresora className="h-4 w-4" />
-              Imprimir Reporte
+              Descargar PDF
             </Boton>
             <Boton onClick={buscar} disabled={!puedeBuscar}>
               <IconoLupa className="h-4 w-4" />

@@ -3,6 +3,7 @@ package ar.edu.uade.simulador.api;
 import ar.edu.uade.simulador.dto.HistorialMateriaDTO;
 import ar.edu.uade.simulador.dto.SituacionAcademicaResponse;
 import ar.edu.uade.simulador.servicio.EstudianteService;
+import ar.edu.uade.simulador.validacion.Validaciones;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,8 @@ public class EstudianteController {
     @GetMapping("/situacion")
     public ResponseEntity<SituacionAcademicaResponse> obtenerSituacion(
             @RequestHeader("X-Legajo")
-            @Pattern(regexp = "\\d{7,15}", message = "el legajo debe tener entre 7 y 15 dígitos")
+            @Pattern(regexp = Validaciones.PATRON_LEGAJO,
+                    message = "el legajo debe tener entre 7 y 15 dígitos")
             String legajo) {
         return ResponseEntity.ok(estudianteService.obtenerSituacion(legajo));
     }
@@ -32,7 +34,8 @@ public class EstudianteController {
     @GetMapping("/historial")
     public ResponseEntity<List<HistorialMateriaDTO>> obtenerHistorial(
             @RequestHeader("X-Legajo")
-            @Pattern(regexp = "\\d{7,15}", message = "el legajo debe tener entre 7 y 15 dígitos")
+            @Pattern(regexp = Validaciones.PATRON_LEGAJO,
+                    message = "el legajo debe tener entre 7 y 15 dígitos")
             String legajo) {
         return ResponseEntity.ok(estudianteService.obtenerHistorial(legajo));
     }

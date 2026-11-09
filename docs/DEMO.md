@@ -54,7 +54,7 @@ curl -s http://localhost:8080/actuator/health
 ## Guion de la demo (5-8 minutos)
 
 1. **`docker compose ps`** — mostrar db healthy y backend up.
-2. **`docker compose logs --tail=50 backend`** — mostrar Flyway V1/V2/V3 y "Started SimuladorApplication".
+2. **`docker compose logs --tail=50 backend`** — mostrar Flyway V1 a V4 y "Started SimuladorApplication".
 3. **Health** — `curl http://localhost:8080/actuator/health` → `UP`.
 4. **Swagger** — abrir `http://localhost:8080/swagger-ui.html` y mostrar los endpoints agrupados.
 5. **Planes** — `curl -H "X-Legajo: 1100001" "http://localhost:8080/api/v1/planes?excluir=1121"` → `1621`, `5010`, `5015`, `5020`, `5030`, `5040` con facultad.

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ApiError } from '@/api/cliente';
+import { ApiError, descargarReportePdf } from '@/api/cliente';
 import { simulacionesPorModo, type ModoDatos } from '@/api/fixtures';
 import { usePlanDetalle } from '@/hooks/usePlanDetalle';
 import { useSimulacion } from '@/hooks/useSimulacion';
@@ -32,6 +32,8 @@ export function Resultado() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { mutate, data, error, isPending } = useSimulacion();
   const [jsonAbierto, setJsonAbierto] = useState(false);
+  const [descargando, setDescargando] = useState(false);
+  const [errorPdf, setErrorPdf] = useState<string | null>(null);
   const ultimaSimulacion = useRef<string | null>(null);
 
   // Modo de datos del toggle dev-only. En producción siempre es "demo".
@@ -110,6 +112,30 @@ export function Resultado() {
     if (nueva === 'informe') params.delete('vista');
     else params.set('vista', nueva);
     setSearchParams(params, { replace: true });
+  };
+
+  // Genera el PDF con la misma respuesta que el usuario está viendo.
+  const descargarPdf = async () => {
+    if (!legajo || !resultado) return;
+    setErrorPdf(null);
+    setDescargando(true);
+    try {
+      const blob = await descargarReportePdf(legajo, resultado);
+      const url = URL.createObjectURL(blob);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = `simulacion-${resultado.planOrigen.codigo}-a-${resultado.planDestino.codigo}.pdf`;
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErrorPdf(
+        e instanceof ApiError ? e.message : 'No se pudo generar el PDF.'
+      );
+    } finally {
+      setDescargando(false);
+    }
   };
 
   return (
@@ -315,11 +341,25 @@ export function Resultado() {
             <Boton variant="secundario" onClick={() => navigate('/')}>
               Volver
             </Boton>
-            <Boton onClick={() => setJsonAbierto(true)}>
+            <Boton
+              variant="secundario"
+              onClick={() => setJsonAbierto(true)}
+              disabled={descargando}
+            >
+              <IconoCodigo className="h-4 w-4" />
+              Ver JSON
+            </Boton>
+            <Boton onClick={descargarPdf} disabled={descargando || !respuestaJson}>
               <IconoImpresora className="h-4 w-4" />
-              Imprimir Reporte
+              {descargando ? 'Generando…' : 'Descargar PDF'}
             </Boton>
           </div>
+
+          {errorPdf && (
+            <Banner variant="warn" className="banner-entrada" icono={<IconoInfo />}>
+              {errorPdf}
+            </Banner>
+          )}
         </div>
       )}
 

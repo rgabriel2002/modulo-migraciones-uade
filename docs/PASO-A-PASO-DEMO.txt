@@ -9,10 +9,10 @@ Objetivo:
 Alcance:
   - Todo Docker (backend + PostgreSQL).
   - Sin JWT, sin túnel, sin CORS, sin TLS.
-  - Datos demo cargados por Flyway (V1 + V2 + V3).
+  - Datos demo cargados por Flyway (V1 a V4).
 
 Directorio de trabajo:
-  /home/gabriel/Escritorio/simulador./simulador
+  <ruta-del-repo>  (la carpeta con pom.xml, frontend/ y src/)
 
 Datos demo:
   Legajo:               1100001
@@ -124,7 +124,7 @@ Objetivo:
      docker compose logs -f backend
 
      Esperado, en orden:
-       - Flyway: "Successfully applied 2 migrations"
+       - Flyway: "Successfully applied 4 migrations"
        - Spring: "Started SimuladorApplication in X seconds"
 
      Tiempo esperado: ~15-25 segundos después de levantar.
@@ -137,36 +137,38 @@ Objetivo:
      Esperado:
        {"groups":["liveness","readiness"],"status":"UP"}
 
-1.6b. Verificar Swagger:
+1.6b. Verificar Swagger (opcional, solo en desarrollo):
 
-      Abrir en el navegador:
+      Swagger está deshabilitado por defecto. Para probarlo en desarrollo,
+      levantar el backend con:
+
+        SPRINGDOC_API_DOCS_ENABLED=true SPRINGDOC_SWAGGER_UI_ENABLED=true ./mvnw spring-boot:run
+
+      y abrir en el navegador:
 
         http://localhost:8080/swagger-ui.html
 
       Esperado: la página de Swagger UI con los endpoints agrupados por
       controller (plan-controller, estudiante-controller, simulacion-controller,
-      equivalencia-controller).
+      equivalencia-controller, reporte-controller).
 
-      Alternativa, verificar el JSON:
-
-        curl -s http://localhost:8080/v3/api-docs | head -c 200
-
-      Esperado: JSON que empieza con {"openapi":...
-
-1.7. Verificar que Flyway aplicó las dos migraciones:
+1.7. Verificar que Flyway aplicó las cuatro migraciones:
 
      docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select version, description, success from flyway_schema_history order by installed_rank;"'
 
      Esperado:
-       V1 | esquema inicial | t
-       V2 | datos demo      | t
+       V1 | esquema inicial       | t
+       V2 | datos demo            | t
+       V3 | multi carrera facultades | t
+       V4 | planes reales         | t
 
 1.8. Verificar los datos demo:
 
      docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select legajo, nombre, apellido from estudiante;"'
 
      Esperado:
-       1100001 | Alumno | De Prueba
+       1100001 | Alumno  | De Prueba
+       1100002 | Alumna  | Multi Carrera
 
 1.9. Verificar los endpoints principales:
 
@@ -220,8 +222,8 @@ Objetivo:
 
      docker images | grep -E 'simulador|postgres'
 
-2.4. NO hacer "down -v" después del prebuild si querés conservar la base.
-     Si querés demo desde cero, hacelo antes del prebuild, no después.
+2.4. NO hacer "down -v" después del prebuild para conservar la base.
+     Para demo desde cero, hacerlo antes del prebuild, no después.
 
 2.5. El día de la demo, levantar sin build:
 

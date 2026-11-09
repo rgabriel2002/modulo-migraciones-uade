@@ -108,3 +108,33 @@ export function postSimulacion(
     body: JSON.stringify(request),
   });
 }
+
+/* Descarga el PDF del reporte usando la respuesta de simulación ya obtenida. */
+export async function descargarReportePdf(
+  legajo: string,
+  simulacion: SimulacionResponse
+): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch('/api/v1/reportes/simulacion', {
+      method: 'POST',
+      headers: {
+        ...headers(legajo),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ legajo, simulacion }),
+    });
+  } catch {
+    throw new ApiError(
+      0,
+      'No se pudo conectar con el servidor. Verificá que el backend esté corriendo.',
+      null
+    );
+  }
+
+  if (!response.ok) {
+    const body = await leerCuerpo(response);
+    throw new ApiError(response.status, mensajeDe(body, response.status), body);
+  }
+  return response.blob();
+}

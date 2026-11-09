@@ -13,6 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ControlTasa {
 
+    /** A partir de esta cantidad de claves se dispara la limpieza perezosa. */
+    private static final int UMBRAL_LIMPIEZA = 10_000;
+
     private final int maximoSolicitudes;
     private final long ventanaMs;
     private final Map<String, Deque<Instant>> solicitudes = new ConcurrentHashMap<>();
@@ -43,7 +46,7 @@ public class ControlTasa {
      * que quedaron sin peticiones dentro de la ventana.
      */
     public void limpiar(Instant ahora) {
-        if (solicitudes.size() < 10_000) {
+        if (solicitudes.size() < UMBRAL_LIMPIEZA) {
             return;
         }
         Instant limite = ahora.minusMillis(ventanaMs);

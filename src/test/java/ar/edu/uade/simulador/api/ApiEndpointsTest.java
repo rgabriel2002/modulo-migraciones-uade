@@ -1,18 +1,26 @@
 package ar.edu.uade.simulador.api;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.startsWith;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ar.edu.uade.simulador.TestcontainersConfiguration;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -308,6 +316,44 @@ class ApiEndpointsTest {
         mockMvc.perform(get("/api/v1/ruta/inexistente"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void generaElReportePdfDeUnaSimulacion() throws Exception {
+        MvcResult simulacion = mockMvc.perform(post("/api/v1/simulaciones")
+                        .header("X-Legajo", LEGAJO)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"codigoPlanOrigen\":\"1121\",\"codigoPlanDestino\":\"1621\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String body = "{\"legajo\":\"" + LEGAJO + "\",\"simulacion\":"
+                + simulacion.getResponse().getContentAsString() + "}";
+
+        mockMvc.perform(post("/api/v1/reportes/simulacion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE,
+                        startsWith("application/pdf")))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        containsString("attachment")))
+                .andExpect(result -> {
+                    byte[] contenido = result.getResponse().getContentAsByteArray();
+                    assertTrue(contenido.length > 2000, "El PDF debería tener contenido");
+                    assertEquals("%PDF",
+                            new String(contenido, 0, 4, StandardCharsets.ISO_8859_1),
+                            "El archivo debería empezar con la firma PDF");
+                });
+    }
+
+    @Test
+    void devuelve400SiElReporteNoTraeSimulacion() throws Exception {
+        mockMvc.perform(post("/api/v1/reportes/simulacion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"legajo\":\"" + LEGAJO + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test

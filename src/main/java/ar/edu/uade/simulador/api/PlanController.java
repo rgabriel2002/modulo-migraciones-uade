@@ -3,6 +3,7 @@ package ar.edu.uade.simulador.api;
 import ar.edu.uade.simulador.dto.PlanDetalleResponse;
 import ar.edu.uade.simulador.dto.PlanResponse;
 import ar.edu.uade.simulador.servicio.PlanService;
+import ar.edu.uade.simulador.validacion.Validaciones;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -26,10 +27,12 @@ public class PlanController {
     @GetMapping
     public ResponseEntity<List<PlanResponse>> listarPlanesDestino(
             @RequestHeader("X-Legajo")
-            @Pattern(regexp = "\\d{7,15}", message = "el legajo debe tener entre 7 y 15 dígitos")
+            @Pattern(regexp = Validaciones.PATRON_LEGAJO,
+                    message = "el legajo debe tener entre 7 y 15 dígitos")
             String legajo,
             @RequestParam(value = "excluir", required = false)
-            @Pattern(regexp = "[A-Za-z0-9._-]{1,20}", message = "el código de plan es inválido")
+            @Pattern(regexp = Validaciones.PATRON_CODIGO_PLAN_O_VACIO,
+                    message = "el código de plan es inválido")
             String excluir) {
         return ResponseEntity.ok(planService.listarPlanesDestino(legajo, excluir));
     }

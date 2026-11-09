@@ -37,7 +37,7 @@ Backend REST para simular la migración de un estudiante desde su plan de estudi
 - Flyway
 - Spring Security
 - Spring Boot Actuator
-- springdoc-openapi 2.7.0 (Swagger UI, deshabilitado por defecto)
+- springdoc-openapi 3.2.0 (Swagger UI, deshabilitado por defecto)
 - Lombok
 - Maven Wrapper
 - Testcontainers
@@ -268,7 +268,7 @@ docker compose up -d --build
 
 Flyway registra las migraciones aplicadas en `flyway_schema_history`. La `V2__datos_demo.sql` se ejecuta **una sola vez**. Reiniciar el backend no duplica datos.
 
-Si querés volver a cargar los datos demo, usá `docker compose down -v`.
+Para volver a cargar los datos demo, usá `docker compose down -v`.
 
 ---
 
@@ -395,7 +395,7 @@ select version, description, success from flyway_schema_history;
 
 Porque Flyway ejecuta `V2__datos_demo.sql` automáticamente al arrancar el backend. La base del contenedor se crea vacía, pero el backend la llena con el esquema (`V1`) y los datos demo (`V2`).
 
-### Si querés una base sin datos demo
+### Base sin datos demo
 
 Opción rápida, conservando el esquema:
 
@@ -511,6 +511,7 @@ completá el header `X-Legajo` (por ejemplo `1100001`).
 | `GET` | `/api/v1/estudiantes/situacion` | Sí | Planes activos del estudiante (multi-carrera) |
 | `GET` | `/api/v1/estudiantes/historial` | Sí | Historial académico con cursadas y recursadas |
 | `POST` | `/api/v1/simulaciones` | Sí | Simula la migración a otro plan |
+| `POST` | `/api/v1/reportes/simulacion` | No | Genera el PDF del reporte desde una respuesta de simulación |
 | `GET` | `/api/v1/equivalencias` | No | Lista equivalencias, con filtros opcionales |
 
 ---
@@ -610,10 +611,10 @@ Respuesta:
       "correlativas": []
     },
     {
-      "codigo": "9.9.003",
-      "nombre": "Programación II",
-      "anio": 2,
-      "cuatrimestre": 1,
+      "codigo": "3.4.071",
+      "nombre": "Programación I",
+      "anio": 1,
+      "cuatrimestre": 2,
       "cargaHoraria": 68,
       "optativa": false,
       "tituloIntermedio": true,
@@ -622,11 +623,6 @@ Respuesta:
           "codigo": "3.4.069",
           "nombre": "Fundamentos de Informática",
           "tipo": "CURSADA"
-        },
-        {
-          "codigo": "9.9.006",
-          "nombre": "Programación I",
-          "tipo": "FINAL"
         }
       ]
     }
@@ -705,8 +701,8 @@ Respuesta:
 [
   {
     "materia": {
-      "codigo": "9.9.002",
-      "nombre": "Base de Datos I"
+      "codigo": "3.4.075",
+      "nombre": "Sistemas Operativos"
     },
     "estado": "FINAL",
     "notaFinal": null,
@@ -805,34 +801,43 @@ Respuesta:
       }
     },
     {
-      "codigo": "9.9.001",
-      "nombre": "Matemática Discreta",
+      "codigo": "3.4.072",
+      "nombre": "Arquitectura de Computadores",
       "anio": 1,
       "cuatrimestre": 2,
-      "cargaHoraria": 102,
+      "cargaHoraria": 68,
       "optativa": false,
       "tituloIntermedio": true,
-      "estado": "A_CURSAR",
-      "reconocimiento": null
+      "estado": "APROBADA",
+      "reconocimiento": {
+        "tipo": "MISMA_MATERIA",
+        "respaldo": "Misma materia",
+        "materiasOrigen": [
+          {
+            "codigo": "3.4.072",
+            "nombre": "Arquitectura de Computadores"
+          }
+        ]
+      }
     }
   ],
   "resumen": {
     "aprobadas": 3,
     "pendientesDeFinal": 1,
-    "pendientesDeCursado": 3,
+    "pendientesDeCursado": 47,
     "materiasReconocidas": 5,
-    "pendientesPlanActual": 2,
-    "pendientesPlanNuevo": 4,
+    "pendientesPlanActual": 14,
+    "pendientesPlanNuevo": 48,
     "tituloIntermedio": {
-      "aprobadas": 2,
-      "total": 6,
-      "avance": 33
+      "aprobadas": 3,
+      "total": 31,
+      "avance": 10
     }
   },
   "optativasSinCorrespondencia": [
     {
-      "codigo": "9.9.005",
-      "nombre": "Seminario de Tendencias"
+      "codigo": "OPT-TDS-I",
+      "nombre": "Optativa I"
     }
   ]
 }
@@ -881,6 +886,47 @@ Errores:
 - `400` si falta `X-Legajo`, si el body es inválido o si `codigoPlanOrigen` o `codigoPlanDestino` están vacíos.
 - `404` si el legajo, el plan destino o el plan origen (no activo para ese legajo) no existen.
 - `409` si el plan destino es el mismo que el origen o si no está activo.
+
+---
+
+### `POST /api/v1/reportes/simulacion`
+
+Genera el **PDF del reporte de equivalencias** a partir de una respuesta de
+simulación ya calculada (el cliente reenvía la que obtuvo, así el documento
+refleja exactamente lo que vio el usuario, sin re-ejecutar el motor).
+
+**Body:**
+
+```json
+{
+  "legajo": "1100001",
+  "simulacion": { ...respuesta de POST /api/v1/simulaciones... }
+}
+```
+
+```bash
+SIM=$(curl -s -X POST http://localhost:8080/api/v1/simulaciones \
+  -H "X-Legajo: 1100001" -H "Content-Type: application/json" \
+  -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1621"}')
+curl -s -X POST http://localhost:8080/api/v1/reportes/simulacion \
+  -H "Content-Type: application/json" \
+  -d "{\"legajo\":\"1100001\",\"simulacion\":$SIM}" \
+  -o reporte.pdf
+```
+
+Responde `application/pdf` con `Content-Disposition: attachment` y el nombre
+`simulacion-<origen>-a-<destino>.pdf`. El documento contiene el encabezado con
+legajo y planes, la tabla del acta (**Código origen · Plan Origen · Materia
+origen · Condición · Código destino · Plan · Materia destino** — una fila por
+materia destino; sin reconocimiento, las columnas de origen van en “-”) y un
+pie con los totales y la fecha. La columna **Condición** usa la misma paleta
+de estados que la app (verde aprobada, amarillo final pendiente, celeste
+cursando) además de la etiqueta escrita, para que el documento siga siendo
+legible impreso en blanco y negro.
+
+Errores:
+
+- `400` si falta el legajo o la simulación en el body.
 
 ---
 
@@ -1044,7 +1090,7 @@ Pendientes / a definir con la facultad:
   para varios nodos haría falta Bucket4j + Redis.
 - **Dependencias**: revisión periódica con
   `mvn versions:display-dependency-updates` (a la fecha hay updates mayores
-  de Flyway/springdoc y un RC de Spring Boot — evaluar antes de subir).
+  de Flyway y un RC de Spring Boot — evaluar antes de subir).
 
 ### Verificación rápida
 
@@ -1146,10 +1192,17 @@ Migraciones:
 ```text
 src/main/resources/db/migration/
 ├── V1__esquema_inicial.sql
-└── V2__datos_demo.sql
+├── V2__datos_demo.sql
+├── V3__multi_carrera_facultades.sql
+└── V4__planes_reales.sql
 ```
 
-> No edites una migración ya aplicada. Si necesitás cambiar datos o esquema, creá una migración nueva (`V3__...sql`). Si editás una migración existente, Flyway puede fallar por checksum.
+> No edites una migración ya aplicada. Si necesitás cambiar datos o esquema, creá una migración nueva (`V5__...sql`). Si editás una migración existente, Flyway puede fallar por checksum.
+
+> Nota de modelado: en el DDL, `correlatividad` referencia a `plan_materia`
+> (materia dentro de un plan), pero la entidad JPA la simplifica apuntando a
+> `Materia` — la funcionalidad actual no depende de esa diferencia (las
+> correlativas se consultan por plan) y el DDL sigue siendo el contrato real.
 
 ---
 
@@ -1283,7 +1336,7 @@ Los tests de API usan Testcontainers y necesitan Docker corriendo. Los tests del
 ./mvnw test
 ```
 
-3. No editar migraciones ya aplicadas. Crear una nueva versión (`V3__...sql`).
+3. No editar migraciones ya aplicadas. Crear una nueva versión (`V5__...sql`).
 4. Mantener el estilo existente: paquetes por capa, DTOs como `record`, inyección por constructor.
 5. Actualizar este README si se agregan endpoints, variables de entorno o migraciones.
 6. No commitear `.env` ni credenciales.
@@ -1298,8 +1351,8 @@ Los tests de API usan Testcontainers y necesitan Docker corriendo. Los tests del
 - [ ] `/actuator/health` devuelve `UP`.
 - [ ] `GET /api/v1/planes?excluir=1121` con `X-Legajo: 1100001` devuelve `1621`, `5010` y `5020` con facultad.
 - [ ] `GET /api/v1/estudiantes/situacion` devuelve `planesActivos` con `1121` (y `1100002` con `1621` + `5010`).
-- [ ] `POST /api/v1/simulaciones` con origen `1121` y destino `1621` devuelve 7 ítems y resumen con 3 aprobadas.
+- [ ] `POST /api/v1/simulaciones` con origen `1121` y destino `1621` devuelve 51 ítems, 3 aprobadas y 5 reconocidas.
 - [ ] `GET /api/v1/equivalencias` devuelve `Res. 456/22` y `Res. 123/21`.
-- [ ] `./mvnw test` pasa los 31 tests.
+- [ ] `./mvnw test` pasa los 33 tests.
 - [ ] Seguridad: `/actuator/env` devuelve 404 y `curl -s -D - -o /dev/null http://localhost:8080/` muestra los security headers.
 - [ ] Si corrés local, usás `DB_PORT=5433` cuando corresponde.
