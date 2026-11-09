@@ -18,6 +18,8 @@ Backend REST para simular la migración de un estudiante desde su plan de estudi
 - [Tests](#tests)
 - [API REST](#api-rest)
 - [Manejo de errores](#manejo-de-errores)
+- [Seguridad](#seguridad)
+- [Demo desde el celular](#demo-desde-el-celular)
 - [Base de datos](#base-de-datos)
 - [Problemas comunes](#problemas-comunes)
 - [Limitaciones conocidas](#limitaciones-conocidas)
@@ -35,7 +37,7 @@ Backend REST para simular la migración de un estudiante desde su plan de estudi
 - Flyway
 - Spring Security
 - Spring Boot Actuator
-- springdoc-openapi 3.2.0 (Swagger UI)
+- springdoc-openapi 3.2.0 (Swagger UI, deshabilitado por defecto)
 - Lombok
 - Maven Wrapper
 - Testcontainers
@@ -266,7 +268,7 @@ docker compose up -d --build
 
 Flyway registra las migraciones aplicadas en `flyway_schema_history`. La `V2__datos_demo.sql` se ejecuta **una sola vez**. Reiniciar el backend no duplica datos.
 
-Si querés volver a cargar los datos demo, usá `docker compose down -v`.
+Para volver a cargar los datos demo, usá `docker compose down -v`.
 
 ---
 
@@ -393,7 +395,7 @@ select version, description, success from flyway_schema_history;
 
 Porque Flyway ejecuta `V2__datos_demo.sql` automáticamente al arrancar el backend. La base del contenedor se crea vacía, pero el backend la llena con el esquema (`V1`) y los datos demo (`V2`).
 
-### Si querés una base sin datos demo
+### Base sin datos demo
 
 Opción rápida, conservando el esquema:
 
@@ -484,17 +486,20 @@ X-Legajo: 1100001
 
 ### Documentación interactiva (Swagger UI)
 
-Con el backend levantado en `localhost:8080`:
+La UI y el JSON de OpenAPI están **deshabilitados por defecto** (no se exponen
+en producción). Para desarrollo local, levantá el backend con:
+
+```bash
+SPRINGDOC_API_DOCS_ENABLED=true SPRINGDOC_SWAGGER_UI_ENABLED=true ./mvnw spring-boot:run
+```
+
+(o agregá esas variables al contenedor). Con eso habilitado:
 
 - UI: http://localhost:8080/swagger-ui.html
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
-- OpenAPI YAML: http://localhost:8080/v3/api-docs.yaml
 
 En la UI desplegá cada endpoint y usá **Try it out**. Para los que requieren identidad,
 completá el header `X-Legajo` (por ejemplo `1100001`).
-
-> Solo para desarrollo local. En producción conviene apagarlo con
-> `springdoc.api-docs.enabled=false` y `springdoc.swagger-ui.enabled=false`.
 
 ### Resumen de endpoints
 
@@ -506,6 +511,7 @@ completá el header `X-Legajo` (por ejemplo `1100001`).
 | `GET` | `/api/v1/estudiantes/situacion` | Sí | Planes activos del estudiante (multi-carrera) |
 | `GET` | `/api/v1/estudiantes/historial` | Sí | Historial académico con cursadas y recursadas |
 | `POST` | `/api/v1/simulaciones` | Sí | Simula la migración a otro plan |
+| `POST` | `/api/v1/reportes/simulacion` | No | Genera el PDF del reporte desde una respuesta de simulación |
 | `GET` | `/api/v1/equivalencias` | No | Lista equivalencias, con filtros opcionales |
 
 ---
@@ -605,10 +611,10 @@ Respuesta:
       "correlativas": []
     },
     {
-      "codigo": "9.9.003",
-      "nombre": "Programación II",
-      "anio": 2,
-      "cuatrimestre": 1,
+      "codigo": "3.4.071",
+      "nombre": "Programación I",
+      "anio": 1,
+      "cuatrimestre": 2,
       "cargaHoraria": 68,
       "optativa": false,
       "tituloIntermedio": true,
@@ -617,11 +623,6 @@ Respuesta:
           "codigo": "3.4.069",
           "nombre": "Fundamentos de Informática",
           "tipo": "CURSADA"
-        },
-        {
-          "codigo": "9.9.006",
-          "nombre": "Programación I",
-          "tipo": "FINAL"
         }
       ]
     }
@@ -700,8 +701,8 @@ Respuesta:
 [
   {
     "materia": {
-      "codigo": "9.9.002",
-      "nombre": "Base de Datos I"
+      "codigo": "3.4.075",
+      "nombre": "Sistemas Operativos"
     },
     "estado": "FINAL",
     "notaFinal": null,
@@ -800,34 +801,43 @@ Respuesta:
       }
     },
     {
-      "codigo": "9.9.001",
-      "nombre": "Matemática Discreta",
+      "codigo": "3.4.072",
+      "nombre": "Arquitectura de Computadores",
       "anio": 1,
       "cuatrimestre": 2,
-      "cargaHoraria": 102,
+      "cargaHoraria": 68,
       "optativa": false,
       "tituloIntermedio": true,
-      "estado": "A_CURSAR",
-      "reconocimiento": null
+      "estado": "APROBADA",
+      "reconocimiento": {
+        "tipo": "MISMA_MATERIA",
+        "respaldo": "Misma materia",
+        "materiasOrigen": [
+          {
+            "codigo": "3.4.072",
+            "nombre": "Arquitectura de Computadores"
+          }
+        ]
+      }
     }
   ],
   "resumen": {
     "aprobadas": 3,
     "pendientesDeFinal": 1,
-    "pendientesDeCursado": 3,
+    "pendientesDeCursado": 47,
     "materiasReconocidas": 5,
-    "pendientesPlanActual": 2,
-    "pendientesPlanNuevo": 4,
+    "pendientesPlanActual": 14,
+    "pendientesPlanNuevo": 48,
     "tituloIntermedio": {
-      "aprobadas": 2,
-      "total": 6,
-      "avance": 33
+      "aprobadas": 3,
+      "total": 31,
+      "avance": 10
     }
   },
   "optativasSinCorrespondencia": [
     {
-      "codigo": "9.9.005",
-      "nombre": "Seminario de Tendencias"
+      "codigo": "OPT-TDS-I",
+      "nombre": "Optativa I"
     }
   ]
 }
@@ -876,6 +886,47 @@ Errores:
 - `400` si falta `X-Legajo`, si el body es inválido o si `codigoPlanOrigen` o `codigoPlanDestino` están vacíos.
 - `404` si el legajo, el plan destino o el plan origen (no activo para ese legajo) no existen.
 - `409` si el plan destino es el mismo que el origen o si no está activo.
+
+---
+
+### `POST /api/v1/reportes/simulacion`
+
+Genera el **PDF del reporte de equivalencias** a partir de una respuesta de
+simulación ya calculada (el cliente reenvía la que obtuvo, así el documento
+refleja exactamente lo que vio el usuario, sin re-ejecutar el motor).
+
+**Body:**
+
+```json
+{
+  "legajo": "1100001",
+  "simulacion": { ...respuesta de POST /api/v1/simulaciones... }
+}
+```
+
+```bash
+SIM=$(curl -s -X POST http://localhost:8080/api/v1/simulaciones \
+  -H "X-Legajo: 1100001" -H "Content-Type: application/json" \
+  -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":"1621"}')
+curl -s -X POST http://localhost:8080/api/v1/reportes/simulacion \
+  -H "Content-Type: application/json" \
+  -d "{\"legajo\":\"1100001\",\"simulacion\":$SIM}" \
+  -o reporte.pdf
+```
+
+Responde `application/pdf` con `Content-Disposition: attachment` y el nombre
+`simulacion-<origen>-a-<destino>.pdf`. El documento contiene el encabezado con
+legajo y planes, la tabla del acta (**Código origen · Plan Origen · Materia
+origen · Condición · Código destino · Plan · Materia destino** — una fila por
+materia destino; sin reconocimiento, las columnas de origen van en “-”) y un
+pie con los totales y la fecha. La columna **Condición** usa la misma paleta
+de estados que la app (verde aprobada, amarillo final pendiente, celeste
+cursando) además de la etiqueta escrita, para que el documento siga siendo
+legible impreso en blanco y negro.
+
+Errores:
+
+- `400` si falta el legajo o la simulación en el body.
 
 ---
 
@@ -964,11 +1015,12 @@ Códigos:
 
 | Código | Cuándo |
 |---|---|
-| `400` | Falta `X-Legajo`, JSON malformado, body inválido o tipo de parámetro inválido |
-| `404` | No existe el estudiante, el plan o el recurso |
+| `400` | Falta `X-Legajo`, legajo con formato inválido (no son 7-15 dígitos), código de plan inválido, JSON malformado, body inválido o tipo de parámetro inválido |
+| `404` | No existe el estudiante, el plan o el recurso (incluye rutas inexistentes y endpoints de Actuator no expuestos) |
 | `409` | Migración no permitida: mismo plan o plan destino inactivo |
 | `415` | `Content-Type` no soportado |
-| `500` | Error inesperado |
+| `429` | Demasiadas solicitudes desde la misma IP (rate limiting) |
+| `500` | Error inesperado (sin detalles internos en la respuesta) |
 
 Ejemplos:
 
@@ -1000,7 +1052,119 @@ curl -i -X POST http://localhost:8080/api/v1/simulaciones \
   -H "X-Legajo: 1100001" \
   -H "Content-Type: application/json" \
   -d '{"codigoPlanOrigen":"1121","codigoPlanDestino":""}'
+
+# Legajo con formato inválido -> 400
+curl -i -H "X-Legajo: abc" http://localhost:8080/api/v1/estudiantes/situacion
 ```
+
+---
+
+## Seguridad
+
+Medidas aplicadas al backend (sin autenticación por ahora: el login lo aporta
+la facultad cuando el módulo se integre a su flujo real):
+
+| Medida | Estado | Dónde |
+|---|---|---|
+| Validación server-side del legajo (`\d{7,15}`) y de los códigos de plan | ✅ | `@Pattern` en controllers y `SimulacionRequest`; 400 automático |
+| Rate limiting por IP (60 req/min → 429) | ✅ | `seguridad/LimitadorTasaInterceptor` + `ControlTasa` (en memoria, 1 instancia) |
+| Actuator restringido a `health` | ✅ | `application.yaml` (`exposure.include: health`) |
+| Errores sin detalles internos; rutas inexistentes → 404 | ✅ | `GlobalExceptionHandler` |
+| Security headers (nosniff, frame DENY, Referrer-Policy, CSP) | ✅ | `seguridad/SecurityConfig` |
+| Swagger/OpenAPI deshabilitado por defecto | ✅ | `application.yaml` (`springdoc.*.enabled: false`; re-activar solo en dev con las variables `SPRINGDOC_API_DOCS_ENABLED`/`SPRINGDOC_SWAGGER_UI_ENABLED`) |
+| Postgres publicado solo en `127.0.0.1` (no expuesto a la LAN) | ✅ | `docker-compose.yml` |
+| Secretos por `.env`, nunca en el código | ✅ | `docker-compose.yml` + `application.yaml` |
+
+Pendientes / a definir con la facultad:
+
+- **Identidad de sesión**: el header `X-Legajo` es contrato de desarrollo.
+  En producción la identidad debe venir de la sesión/cookie del SSO de la
+  facultad (el bloque `app.jwt` de `application.yaml` ya espera ese
+  contrato). Nunca confiar en un legajo elegible por el cliente.
+- **HTTPS/TLS**: lo termina la infraestructura de la facultad (su dominio y
+  proxy). Para demos públicas con candado verde sin dominio propio: túnel
+  gratuito (`cloudflared tunnel --url http://localhost:8080`).
+- **CORS**: hoy no hace falta (SPA y API en el mismo origen). Configurar una
+  allowlist exacta solo si WebCampus consume la API desde otro dominio.
+- **Rate limiting multi-nodo**: el actual es en memoria (una instancia);
+  para varios nodos haría falta Bucket4j + Redis.
+- **Dependencias**: revisión periódica con
+  `mvn versions:display-dependency-updates` (a la fecha hay updates mayores
+  de Flyway y un RC de Spring Boot — evaluar antes de subir).
+
+### Verificación rápida
+
+```bash
+# Headers de seguridad en el SPA
+curl -s -D - -o /dev/null http://localhost:8080/ | grep -iE "x-content-type|x-frame|referrer-policy|content-security"
+
+# Actuator: solo health
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/actuator/env   # 404
+
+# Validación de legajo
+curl -s -o /dev/null -w "%{http_code}\n" -H "X-Legajo: abc" http://localhost:8080/api/v1/estudiantes/situacion  # 400
+
+# Rate limiting: después de 60 requests en un minuto responde 429
+for i in $(seq 1 70); do curl -s -o /dev/null http://localhost:8080/api/v1/planes/1621; done
+```
+
+---
+
+## Demo desde el celular
+
+Dos formas de mostrar el simulador en un teléfono.
+
+### A. Misma red Wi-Fi (sin instalar nada)
+
+1. Celular conectado al **mismo Wi-Fi** que la notebook.
+2. Averiguar la IP de la notebook:
+   ```bash
+   hostname -I
+   ```
+3. Abrir en el celular:
+   ```
+   http://<IP>:8080/        # ej. http://192.168.0.30:8080/
+   ```
+4. Ingresar el legajo **a mano** (`1100001` o `1100002`): el celular es otro
+   dispositivo y no comparte el `localStorage` de la PC.
+
+Si no carga: firewall de la notebook o “AP isolation” del router (probar con
+el hotspot del celular). La IP cambia si la notebook se conecta a otra red.
+
+### B. Túnel de Cloudflare (cualquier red, HTTPS válido)
+
+Para la presentación: el público entra desde **sus propios celulares con
+datos móviles**, con candado verde y sin depender de tu Wi-Fi.
+
+```bash
+# 1) Instalar cloudflared (una sola vez)
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cloudflared.deb
+sudo dpkg -i /tmp/cloudflared.deb
+
+# 2) Levantar el túnel (terminal dedicada; el backend ya debe estar corriendo)
+cloudflared tunnel --url http://localhost:8080
+```
+
+Imprime una URL tipo `https://xxxx.trycloudflare.com`. Compartila o pasala a
+QR para la slide:
+
+```bash
+sudo apt install -y qrencode
+qrencode -o ~/demo-qr.png "https://xxxx.trycloudflare.com"
+```
+
+Cerrar con `Ctrl+C` al terminar la demo.
+
+Advertencias:
+
+- La URL **cambia en cada arranque**: generar el QR *después* de levantar el
+  túnel, el día de la presentación.
+- El túnel sin cuenta no tiene garantía de uptime (está bien para una demo).
+- El tráfico pasa por el borde de Cloudflare: usarlo **solo con datos demo**.
+  Para producción, la infraestructura de la facultad (dominio y certificado
+  propios).
+- Cualquiera con la URL puede entrar mientras el túnel esté corriendo: no
+  dejarlo abierto de más.
 
 ---
 
@@ -1028,10 +1192,17 @@ Migraciones:
 ```text
 src/main/resources/db/migration/
 ├── V1__esquema_inicial.sql
-└── V2__datos_demo.sql
+├── V2__datos_demo.sql
+├── V3__multi_carrera_facultades.sql
+└── V4__planes_reales.sql
 ```
 
-> No edites una migración ya aplicada. Si necesitás cambiar datos o esquema, creá una migración nueva (`V3__...sql`). Si editás una migración existente, Flyway puede fallar por checksum.
+> No edites una migración ya aplicada. Si necesitás cambiar datos o esquema, creá una migración nueva (`V5__...sql`). Si editás una migración existente, Flyway puede fallar por checksum.
+
+> Nota de modelado: en el DDL, `correlatividad` referencia a `plan_materia`
+> (materia dentro de un plan), pero la entidad JPA la simplifica apuntando a
+> `Materia` — la funcionalidad actual no depende de esa diferencia (las
+> correlativas se consultan por plan) y el DDL sigue siendo el contrato real.
 
 ---
 
@@ -1100,6 +1271,13 @@ No se recomienda editar el checksum a mano.
 
 Es normal. Spring Security autoconfigura un usuario en memoria porque todavía no hay autenticación real. No afecta a los endpoints porque `SecurityConfig` permite todo. Es una deuda pendiente.
 
+### La API devuelve `429 Too Many Requests`
+
+Es el rate limiting (60 requests por minuto por IP, ver [Seguridad](#seguridad)).
+Esperá un minuto sin hacer requests y volvé a intentar. Si aparece durante la
+demo con el túnel de Cloudflare, es porque el tráfico de todo el público entra
+con la misma IP pública.
+
 ### El backend local se conecta a la base equivocada
 
 En este entorno, PostgreSQL está publicado en `5433`. El backend local necesita:
@@ -1158,7 +1336,7 @@ Los tests de API usan Testcontainers y necesitan Docker corriendo. Los tests del
 ./mvnw test
 ```
 
-3. No editar migraciones ya aplicadas. Crear una nueva versión (`V3__...sql`).
+3. No editar migraciones ya aplicadas. Crear una nueva versión (`V5__...sql`).
 4. Mantener el estilo existente: paquetes por capa, DTOs como `record`, inyección por constructor.
 5. Actualizar este README si se agregan endpoints, variables de entorno o migraciones.
 6. No commitear `.env` ni credenciales.
@@ -1173,7 +1351,8 @@ Los tests de API usan Testcontainers y necesitan Docker corriendo. Los tests del
 - [ ] `/actuator/health` devuelve `UP`.
 - [ ] `GET /api/v1/planes?excluir=1121` con `X-Legajo: 1100001` devuelve `1621`, `5010` y `5020` con facultad.
 - [ ] `GET /api/v1/estudiantes/situacion` devuelve `planesActivos` con `1121` (y `1100002` con `1621` + `5010`).
-- [ ] `POST /api/v1/simulaciones` con origen `1121` y destino `1621` devuelve 7 ítems y resumen con 3 aprobadas.
+- [ ] `POST /api/v1/simulaciones` con origen `1121` y destino `1621` devuelve 51 ítems, 3 aprobadas y 5 reconocidas.
 - [ ] `GET /api/v1/equivalencias` devuelve `Res. 456/22` y `Res. 123/21`.
-- [ ] `./mvnw test` pasa los 23 tests.
+- [ ] `./mvnw test` pasa los 33 tests.
+- [ ] Seguridad: `/actuator/env` devuelve 404 y `curl -s -D - -o /dev/null http://localhost:8080/` muestra los security headers.
 - [ ] Si corrés local, usás `DB_PORT=5433` cuando corresponde.

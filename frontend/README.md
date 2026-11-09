@@ -113,7 +113,9 @@ El front queda servido en **http://localhost:8080/**.
 6. Ver el resultado en dos pestañas:
    - **Informe de equivalencias**: KPIs, avance del título intermedio, tabla de materias del plan destino con estado y reconocimiento, y optativas aprobadas sin correspondencia.
    - **Mapa de correlativas (Plan de carrera)**: materias agrupadas por año y cuatrimestre, con flechas de correlatividad y los estados de la simulación.
-7. Presionar **Imprimir Reporte** para ver el **JSON crudo** del `POST /simulaciones`. Todavía no genera PDF.
+7. Presionar **Descargar PDF** para bajar el reporte en PDF (acta de
+   equivalencias con las materias reconocidas); **Ver JSON** abre el crudo
+   de la respuesta para depurar.
 
 El legajo se persiste en `localStorage` con la clave `simulador-legajo`. La
 pestaña activa se persiste en la URL con `?vista=mapa` (sin el parámetro se
@@ -223,10 +225,13 @@ Casos de error:
 | `GET` | `/api/v1/planes?excluir={codigo}` | `X-Legajo` | — | `usePlanes` |
 | `GET` | `/api/v1/planes/{codigo}` | — | — | `usePlanDetalle` |
 | `POST` | `/api/v1/simulaciones` | `X-Legajo` | `{ "codigoPlanOrigen": "1121", "codigoPlanDestino": "1621" }` | `useSimulacion` |
+| `POST` | `/api/v1/reportes/simulacion` | — | `{ "legajo": "1100001", "simulacion": {…} }` | `descargarReportePdf` |
 
 `GET /planes/{codigo}` se usa solo para el mapa de correlativas. El backend
 expone además `GET /estudiantes/historial` y `GET /equivalencias`, pero este
-flujo no los necesita: el `POST` ya devuelve el cruce resuelto.
+flujo no los necesita: el `POST` ya devuelve el cruce resuelto. El PDF se
+genera reenviando la respuesta de la simulación (`descargarReportePdf`),
+sin re-ejecutar el motor.
 
 ### Ejemplo del POST
 
@@ -497,7 +502,9 @@ textos (verificado sobre `dist/`). Por eso no se copian a
   el plan elegido como origen se excluye del listado (`?excluir=`).
 - **`{ status, body }`**: el cliente devuelve la respuesta real para el visor JSON.
 - **`HashRouter`**: evita tocar el backend con un fallback SPA.
-- **“Imprimir Reporte”**: por ahora abre el JSON crudo, no genera PDF.
+- **“Descargar PDF”**: genera el reporte en PDF reenviando al backend la
+  misma respuesta de la simulación (`POST /reportes/simulacion`), sin
+  re-ejecutar el motor. “Ver JSON” queda para depuración.
 - **Mapa de solo lectura**: los estados vienen de la simulación; no se editan
   desde el mapa.
 - **Pestaña en la URL**: `?vista=mapa` permite deep links y sobrevive al
@@ -507,8 +514,9 @@ textos (verificado sobre `dist/`). Por eso no se copian a
 
 ## Limitaciones y próximos pasos
 
-- No genera PDF; “Imprimir Reporte” muestra el JSON.
-- Consume 4 de los 6 endpoints.
+- El PDF del reporte es un acta simple (sin plantilla institucional ni firma
+  digital); una versión oficial se definirá con la facultad.
+- Consume 5 de los 7 endpoints.
 - Hay dos legajos y siete planes en los datos demo (dos facultades, planes
   reales); el legajo `1100002` cubre multi-carrera, cambio de facultad y
   actualización de plan (`5010` → `5015`).
